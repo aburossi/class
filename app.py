@@ -6,7 +6,7 @@ import time
 import matplotlib.pyplot as plt
 from io import BytesIO
 
-st.title('EDUnews Lostopf & Timer')
+st.title('Lostopf & Timer')
 
 # Managing the text files for name selection
 directory_path = 'klassen'
