@@ -25,17 +25,25 @@ def create_group_image(groups):
     buffer.seek(0)
     return buffer
 
-if selected_file:
-    full_file_path = os.path.join(directory_path, selected_file)
-    if 'current_file' not in st.session_state or st.session_state.current_file != selected_file:
-        with open(full_file_path, 'r') as file:
-            st.session_state.names_list = [line.strip() for line in file.readlines()]
-        st.session_state.current_file = selected_file
+# Option for manual name input
+manual_input = st.checkbox('Manuelle Eingabe der Namen')
+if manual_input:
+    names_input = st.text_area("Namen eingeben (jeder Name in einer neuen Zeile):")
+    if names_input:
+        st.session_state.names_list = [name.strip() for name in names_input.split('\n') if name.strip()]
+else:
+    if selected_file:
+        full_file_path = os.path.join(directory_path, selected_file)
+        if 'current_file' not in st.session_state or st.session_state.current_file != selected_file:
+            with open(full_file_path, 'r') as file:
+                st.session_state.names_list = [line.strip() for line in file.readlines()]
+            st.session_state.current_file = selected_file
 
-    col1, col2 = st.columns([3, 2])
+col1, col2 = st.columns([3, 2])
 
-    with col1:
-        st.write("<h2>Teilnehmer:</h2>", unsafe_allow_html=True)
+with col1:
+    st.write("<h2>Teilnehmer:</h2>", unsafe_allow_html=True)
+    if 'names_list' in st.session_state:
         st.dataframe(pd.DataFrame(st.session_state.names_list, columns=["Namen"]))
         
         if st.button('Zufallsname auswählen') and st.session_state.names_list:
@@ -44,7 +52,7 @@ if selected_file:
             st.success(f"Auswahl: {random_name}")
             st.dataframe(pd.DataFrame(st.session_state.names_list, columns=["Namen"]))
         
-        if st.button('Liste zurücksetzen'):
+        if st.button('Liste zurücksetzen') and not manual_input:
             with open(full_file_path, 'r') as file:
                 st.session_state.names_list = [line.strip() for line in file.readlines()]
             st.dataframe(pd.DataFrame(st.session_state.names_list, columns=["Namen"]))
@@ -59,16 +67,16 @@ if selected_file:
             buffer = create_group_image(groups)
             st.download_button(label="Download Groups as Image", data=buffer, file_name="groups.png", mime="image/png")
 
-    with col2:
-        st.write("<h2>Timer:</h2>", unsafe_allow_html=True)
-        timer_minutes = st.number_input('Minuten', min_value=0, value=0, step=1)
-        if st.button('Start Timer'):
-            timer_container = st.empty()
-            t = int(timer_minutes * 60)
-            while t > 0:
-                mins, secs = divmod(t, 60)
-                timer_value = '{:02d}:{:02d}'.format(mins, secs)
-                timer_container.markdown(f'<h2>Verbleibende Zeit: {timer_value}</h2>', unsafe_allow_html=True)
-                time.sleep(1)
-                t -= 1
-            timer_container.markdown("<h2>Zeit ist um</h2>", unsafe_allow_html=True)
+with col2:
+    st.write("<h2>Timer:</h2>", unsafe_allow_html=True)
+    timer_minutes = st.number_input('Minuten', min_value=0, value=0, step=1)
+    if st.button('Start Timer'):
+        timer_container = st.empty()
+        t = int(timer_minutes * 60)
+        while t > 0:
+            mins, secs = divmod(t, 60)
+            timer_value = '{:02d}:{:02d}'.format(mins, secs)
+            timer_container.markdown(f'<h2>Verbleibende Zeit: {timer_value}</h2>', unsafe_allow_html=True)
+            time.sleep(1)
+            t -= 1
+        timer_container.markdown("<h2>Zeit ist um</h2>", unsafe_allow_html=True)
