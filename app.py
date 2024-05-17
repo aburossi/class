@@ -8,11 +8,11 @@ from io import BytesIO
 
 st.title('EDUnews Lostopf & Timer')
 
-# Managing the Excel files for name selection
+# Managing the text files for name selection
 directory_path = 'klassen'
-excel_files = [f for f in os.listdir(directory_path) if f.endswith('.xlsx')]
+text_files = [f for f in os.listdir(directory_path) if f.endswith('.txt')]
 st.write('<h2>Klassenliste auswählen:</h2>', unsafe_allow_html=True)
-selected_file = st.selectbox('Klassen', excel_files)
+selected_file = st.selectbox('Klassen', text_files)
 
 def create_group_image(groups):
     fig, ax = plt.subplots()
@@ -28,8 +28,8 @@ def create_group_image(groups):
 if selected_file:
     full_file_path = os.path.join(directory_path, selected_file)
     if 'current_file' not in st.session_state or st.session_state.current_file != selected_file:
-        df = pd.read_excel(full_file_path)
-        st.session_state.names_list = df.iloc[:, 0].tolist()
+        with open(full_file_path, 'r') as file:
+            st.session_state.names_list = [line.strip() for line in file.readlines()]
         st.session_state.current_file = selected_file
 
     col1, col2 = st.columns([3, 2])
@@ -45,8 +45,8 @@ if selected_file:
             st.dataframe(pd.DataFrame(st.session_state.names_list, columns=["Namen"]))
         
         if st.button('Liste zurücksetzen'):
-            df = pd.read_excel(full_file_path)
-            st.session_state.names_list = df.iloc[:, 0].tolist()
+            with open(full_file_path, 'r') as file:
+                st.session_state.names_list = [line.strip() for line in file.readlines()]
             st.dataframe(pd.DataFrame(st.session_state.names_list, columns=["Namen"]))
 
         num_groups = st.number_input('Anzahl der Gruppen', min_value=1, value=2, step=1)
