@@ -31,12 +31,14 @@ if manual_input:
     names_input = st.text_area("Namen eingeben (jeder Name in einer neuen Zeile):")
     if names_input:
         st.session_state.names_list = [name.strip() for name in names_input.split('\n') if name.strip()]
+        st.session_state.original_names_list = st.session_state.names_list.copy()
 else:
     if selected_file:
         full_file_path = os.path.join(directory_path, selected_file)
         if 'current_file' not in st.session_state or st.session_state.current_file != selected_file:
             with open(full_file_path, 'r') as file:
                 st.session_state.names_list = [line.strip() for line in file.readlines()]
+                st.session_state.original_names_list = st.session_state.names_list.copy()
             st.session_state.current_file = selected_file
 
 col1, col2 = st.columns([3, 2])
@@ -52,9 +54,8 @@ with col1:
             st.success(f"Auswahl: {random_name}")
             st.dataframe(pd.DataFrame(st.session_state.names_list, columns=["Namen"]))
         
-        if st.button('Liste zurücksetzen') and not manual_input:
-            with open(full_file_path, 'r') as file:
-                st.session_state.names_list = [line.strip() for line in file.readlines()]
+        if st.button('Liste zurücksetzen'):
+            st.session_state.names_list = st.session_state.original_names_list.copy()
             st.dataframe(pd.DataFrame(st.session_state.names_list, columns=["Namen"]))
 
         num_groups = st.number_input('Anzahl der Gruppen', min_value=1, value=2, step=1)
