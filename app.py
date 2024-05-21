@@ -2,17 +2,21 @@ import streamlit as st
 import pandas as pd
 import os
 import random
-import time
-import matplotlib.pyplot as plt
 from io import BytesIO
+import matplotlib.pyplot as plt
+import time
+from streamlit_autorefresh import st_autorefresh
 
 st.title('Lostopf & Timer')
 
 # Managing the text files for name selection
 directory_path = 'klassen'
-text_files = [f for f in os.listdir(directory_path) if f.endswith('.txt')]
-st.write('<h2>Klassenliste auswählen:</h2>', unsafe_allow_html=True)
-selected_file = st.selectbox('Klassen', text_files)
+if not os.path.exists(directory_path):
+    st.error(f"Directory '{directory_path}' does not exist.")
+else:
+    text_files = [f for f in os.listdir(directory_path) if f.endswith('.txt')]
+    st.write('<h2>Klassenliste auswählen:</h2>', unsafe_allow_html=True)
+    selected_file = st.selectbox('Klassen', text_files)
 
 def create_group_image(groups):
     fig, ax = plt.subplots()
@@ -67,17 +71,27 @@ with col1:
             
             buffer = create_group_image(groups)
             st.download_button(label="Download Groups as Image", data=buffer, file_name="groups.png", mime="image/png")
+            
+            # Option to export groups to CSV
+            group_df = pd.DataFrame([(group, name) for group, names in groups.items() for name in names], columns=["Gruppe", "Name"])
+            csv = group_df.to_csv(index=False).encode('utf-8')
+            st.download_button(label="Download Groups as CSV", data=csv, file_name="groups.csv", mime="text/csv")
 
 with col2:
     st.write("<h2>Timer:</h2>", unsafe_allow_html=True)
     timer_minutes = st.number_input('Minuten', min_value=0, value=0, step=1)
     if st.button('Start Timer'):
+        if 'timer_start' not in st.session_state:
+            st.session_state.timer_start = time.time()
         timer_container = st.empty()
         t = int(timer_minutes * 60)
-        while t > 0:
-            mins, secs = divmod(t, 60)
+        end_time = st.session_state.timer_start + t
+        st_autorefresh(interval=1000, key="timer_refresh")
+        while time.time() < end_time:
+            remaining_time = int(end_time - time.time())
+            mins, secs = divmod(remaining_time, 60)
             timer_value = '{:02d}:{:02d}'.format(mins, secs)
             timer_container.markdown(f'<h2>Verbleibende Zeit: {timer_value}</h2>', unsafe_allow_html=True)
             time.sleep(1)
-            t -= 1
         timer_container.markdown("<h2>Zeit ist um</h2>", unsafe_allow_html=True)
+        del st.session_state['timer_start']
