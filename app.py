@@ -83,15 +83,23 @@ with col2:
     if st.button('Start Timer'):
         if 'timer_start' not in st.session_state:
             st.session_state.timer_start = time.time()
-        timer_container = st.empty()
-        t = int(timer_minutes * 60)
-        end_time = st.session_state.timer_start + t
-        st_autorefresh(interval=1000, key="timer_refresh")
-        while time.time() < end_time:
-            remaining_time = int(end_time - time.time())
+            st.session_state.timer_duration = timer_minutes * 60
+        else:
+            # Reset the timer if start button is pressed again
+            st.session_state.timer_start = time.time()
+            st.session_state.timer_duration = timer_minutes * 60
+
+    if 'timer_start' in st.session_state:
+        current_time = time.time()
+        elapsed_time = current_time - st.session_state.timer_start
+        remaining_time = st.session_state.timer_duration - elapsed_time
+        
+        if remaining_time > 0:
             mins, secs = divmod(remaining_time, 60)
-            timer_value = '{:02d}:{:02d}'.format(mins, secs)
-            timer_container.markdown(f'<h2>Verbleibende Zeit: {timer_value}</h2>', unsafe_allow_html=True)
-            time.sleep(1)
-        timer_container.markdown("<h2>Zeit ist um</h2>", unsafe_allow_html=True)
-        del st.session_state['timer_start']
+            timer_value = '{:02d}:{:02d}'.format(int(mins), int(secs))
+            st.markdown(f'<h2>Verbleibende Zeit: {timer_value}</h2>', unsafe_allow_html=True)
+            st_autorefresh(interval=1000, key="timer_refresh")
+        else:
+            st.markdown("<h2>Zeit ist um</h2>", unsafe_allow_html=True)
+            del st.session_state['timer_start']
+            del st.session_state['timer_duration']
