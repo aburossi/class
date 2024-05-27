@@ -4,7 +4,6 @@ import os
 import random
 from io import BytesIO
 import matplotlib.pyplot as plt
-from streamlit_autorefresh import st_autorefresh
 
 st.title('Lostopf & Timer')
 
@@ -77,33 +76,14 @@ with col1:
             st.download_button(label="Download Groups as CSV", data=csv, file_name="groups.csv", mime="text/csv")
 
 with col2:
-    st.write("<h2>Timer:</h2>", unsafe_allow_html=True)
-    timer_minutes = st.number_input('Minuten', min_value=0, value=0, step=1)
-    if st.button('Start Timer'):
-        if 'timer_start' not in st.session_state:
-            st.session_state.timer_start = time.time()
-            st.session_state.timer_duration = timer_minutes * 60
-        else:
-            # Reset the timer if start button is pressed again
-            st.session_state.timer_start = time.time()
-            st.session_state.timer_duration = timer_minutes * 60
-
-    if 'timer_start' in st.session_state:
-        current_time = time.time()
-        elapsed_time = current_time - st.session_state.timer_start
-        remaining_time = st.session_state.timer_duration - elapsed_time
-        
-        if remaining_time > 0:
-            mins, secs = divmod(remaining_time, 60)
-            timer_value = '{:02d}:{:02d}'.format(int(mins), int(secs))
-            st.markdown(f'<h2>Verbleibende Zeit: {timer_value}</h2>', unsafe_allow_html=True)
-            st_autorefresh(interval=1000, key="timer_refresh")
-        else:
-            st.markdown("<h2>Zeit ist um</h2>", unsafe_allow_html=True)
-            del st.session_state['timer_start']
-            del st.session_state['timer_duration']
-    
-    # Embed YouTube video timer
     st.write("<h2>Alternativer Timer:</h2>", unsafe_allow_html=True)
-    st.components.v1.iframe("https://www.youtube.com/embed/qgnDbQ1aM54", width=560, height=315)
-
+    timer_options = {
+        "5-Minute Timer": "https://www.youtube.com/embed/qgnDbQ1aM54",
+        "3-Minute Timer": "https://www.youtube.com/embed/DN5ZcGKwm7U"
+    }
+    
+    selected_timer = st.selectbox("Wählen Sie einen Timer", list(timer_options.keys()))
+    
+    if selected_timer:
+        timer_url = timer_options[selected_timer]
+        st.components.v1.iframe(timer_url, width=560, height=315)
