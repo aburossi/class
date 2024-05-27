@@ -61,11 +61,18 @@ with col1:
             st.dataframe(pd.DataFrame(st.session_state.names_list, columns=["Namen"]))
 
         num_groups = st.number_input('Anzahl der Gruppen', min_value=1, value=2, step=1)
+        
+        # Input fields for custom group names
+        group_names = []
+        for i in range(num_groups):
+            group_name = st.text_input(f'Name der Gruppe {i+1}', value=f'Gruppe {i+1}')
+            group_names.append(group_name)
+        
         if st.button('Gruppen erstellen'):
             random.shuffle(st.session_state.names_list)
-            groups = {f'Gruppe {i+1}': [] for i in range(num_groups)}
+            groups = {group_names[i]: [] for i in range(num_groups)}
             for index, name in enumerate(st.session_state.names_list):
-                groups[f'Gruppe {(index % num_groups) + 1}'].append(name)
+                groups[group_names[index % num_groups]].append(name)
             
             buffer = create_group_image(groups)
             st.download_button(label="Download Groups as Image", data=buffer, file_name="groups.png", mime="image/png")
@@ -76,14 +83,15 @@ with col1:
             st.download_button(label="Download Groups as CSV", data=csv, file_name="groups.csv", mime="text/csv")
 
 with col2:
-    st.write("<h2>Timer:</h2>", unsafe_allow_html=True)
+    st.write("<h2>Alternativer Timer:</h2>", unsafe_allow_html=True)
     timer_options = {
+        "10-Minute Timer": "https://www.youtube.com/embed/DcvtwlM1aIE",
         "5-Minute Timer": "https://www.youtube.com/embed/qgnDbQ1aM54",
         "3-Minute Timer": "https://www.youtube.com/embed/DN5ZcGKwm7U"
     }
     
-    selected_timer = st.selectbox("", list(timer_options.keys()))
+    selected_timer = st.selectbox("Wählen Sie einen Timer", list(timer_options.keys()))
     
     if selected_timer:
         timer_url = timer_options[selected_timer]
-        st.components.v1.iframe(timer_url, width=560, height=315)
+        st.components.v1.iframe(timer_url, width=360, height=115)
