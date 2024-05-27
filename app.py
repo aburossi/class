@@ -85,9 +85,10 @@ with col1:
 with col2:
     st.write("<h2>Timer</h2>", unsafe_allow_html=True)
     timer_options = {
-        "10-Minute Timer": "https://www.youtube.com/embed/DcvtwlM1aIE",
-        "5-Minute Timer": "https://www.youtube.com/embed/qgnDbQ1aM54",
-        "3-Minute Timer": "https://www.youtube.com/embed/DN5ZcGKwm7U"
+        "15'": "https://www.youtube.com/embed/1gQJUjgCqrU",
+        "10'": "https://www.youtube.com/embed/DcvtwlM1aIE",
+        "5'": "https://www.youtube.com/embed/qgnDbQ1aM54",
+        "3'": "https://www.youtube.com/embed/DN5ZcGKwm7U"
     }
     
     selected_timer = st.selectbox("Wählen Sie einen Timer", list(timer_options.keys()))
