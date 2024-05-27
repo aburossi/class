@@ -83,7 +83,7 @@ with col1:
             st.download_button(label="Download Groups as CSV", data=csv, file_name="groups.csv", mime="text/csv")
 
 with col2:
-    st.write("<h2>Alternativer Timer:</h2>", unsafe_allow_html=True)
+    st.write("<h2>Timer</h2>", unsafe_allow_html=True)
     timer_options = {
         "10-Minute Timer": "https://www.youtube.com/embed/DcvtwlM1aIE",
         "5-Minute Timer": "https://www.youtube.com/embed/qgnDbQ1aM54",
