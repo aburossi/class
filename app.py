@@ -94,4 +94,4 @@ with col2:
     
     if selected_timer:
         timer_url = timer_options[selected_timer]
-        st.components.v1.iframe(timer_url, width=360, height=115)
+        st.components.v1.iframe(timer_url, width=260, height=215)
