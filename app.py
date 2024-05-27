@@ -4,7 +4,6 @@ import os
 import random
 from io import BytesIO
 import matplotlib.pyplot as plt
-import time
 from streamlit_autorefresh import st_autorefresh
 
 st.title('Lostopf & Timer')
@@ -103,3 +102,8 @@ with col2:
             st.markdown("<h2>Zeit ist um</h2>", unsafe_allow_html=True)
             del st.session_state['timer_start']
             del st.session_state['timer_duration']
+    
+    # Embed YouTube video timer
+    st.write("<h2>Alternativer Timer:</h2>", unsafe_allow_html=True)
+    st.components.v1.iframe("https://www.youtube.com/embed/qgnDbQ1aM54", width=560, height=315)
+
