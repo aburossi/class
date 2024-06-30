@@ -66,7 +66,7 @@
             <button onclick="createGroups()">Gruppen erstellen</button>
             <div id="groups"></div>
 
-            <ul id="nameList"></ul>
+            <ul id="nameList"></ul>    
         </div>
 
         <div class="column">
@@ -80,7 +80,7 @@
             <button onclick="loadTempClass()">Neue Klasse laden</button>
         </div>
     </div>
-
+    <audio id="timerSound" src="https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3"></audio>
     <script>
         let names = [];
 
@@ -158,6 +158,7 @@
         function startTimer() {
             let duration = parseInt(document.getElementById('timerMinutes').value) * 60;
             const display = document.getElementById('timerDisplay');
+            const sound = document.getElementById('timerSound');
             clearInterval(window.timerInterval);
             window.timerInterval = setInterval(() => {
                 const minutes = Math.floor(duration / 60);
@@ -166,6 +167,7 @@
                 if (--duration < 0) {
                     clearInterval(window.timerInterval);
                     display.textContent = 'Zeit abgelaufen!';
+                    sound.play(); // Play the sound when timer ends
                 }
             }, 1000);
         }
