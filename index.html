@@ -11,9 +11,11 @@
 <body>
     <h1>Class Organizer</h1>
 
+    <h2>Select Class</h2>
+    <select id="classSelect" onchange="loadClass()"></select>
+
     <h2>Class List</h2>
-    <textarea id="nameList" rows="10" cols="30"></textarea>
-    <button onclick="loadNames()">Load Names</button>
+    <ul id="nameList"></ul>
 
     <h2>Random Name</h2>
     <button onclick="selectRandomName()">Select Random Name</button>
@@ -37,10 +39,29 @@
     <script>
         let names = [];
 
-        function loadNames() {
-            const nameList = document.getElementById('nameList').value;
-            names = nameList.split('\n').filter(name => name.trim() !== '');
-            alert(`Loaded ${names.length} names`);
+        // Load available classes
+        fetch('classes.json')
+            .then(response => response.json())
+            .then(classes => {
+                const select = document.getElementById('classSelect');
+                classes.forEach(className => {
+                    const option = document.createElement('option');
+                    option.value = className;
+                    option.textContent = className.replace('.json', '');
+                    select.appendChild(option);
+                });
+                loadClass(); // Load the first class by default
+            });
+
+        function loadClass() {
+            const className = document.getElementById('classSelect').value;
+            fetch(className)
+                .then(response => response.json())
+                .then(data => {
+                    names = data.students;
+                    const nameList = document.getElementById('nameList');
+                    nameList.innerHTML = names.map(name => `<li>${name}</li>`).join('');
+                });
         }
 
         function selectRandomName() {
@@ -51,6 +72,7 @@
             const index = Math.floor(Math.random() * names.length);
             const selectedName = names.splice(index, 1)[0];
             document.getElementById('selectedName').textContent = selectedName;
+            loadClass(); // Reload the class list to reflect the removed name
         }
 
         function createGroups() {
