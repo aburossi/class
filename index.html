@@ -10,6 +10,8 @@
             line-height: 1.6;
             margin: 0;
             padding: 20px;
+            background-color: #333;
+            color: #fff;
         }
         .container {
             display: flex;
@@ -19,11 +21,15 @@
             flex: 1;
         }
         h1, h2 {
-            color: #333;
+            color: #fff;
         }
         select, input, button, textarea {
             margin-bottom: 10px;
             width: 100%;
+            background-color: #444;
+            color: #fff;
+            border: 1px solid #555;
+            padding: 5px;
         }
         ul {
             list-style-type: none;
@@ -31,7 +37,7 @@
         }
         #selectedName {
             font-weight: bold;
-            color: #007bff;
+            color: #ffd700;
         }
     </style>
 </head>
@@ -43,16 +49,12 @@
             <h2>Klasse auswählen</h2>
             <select id="classSelect" onchange="loadClass()"></select>
 
-            <h2>Temporäre Klasse</h2>
-            <textarea id="tempClassInput" rows="5" placeholder="Namen hier einfügen (ein Name pro Zeile)"></textarea>
-            <button onclick="loadTempClass()">Temporäre Klasse laden</button>
-
-            <h2>Klassenliste</h2>
-            <ul id="nameList"></ul>
-
             <h2>Zufälliger Name</h2>
             <button onclick="selectRandomName()">Zufälligen Namen auswählen</button>
             <p id="selectedName"></p>
+
+            <h2>Klassenliste</h2>
+            <ul id="nameList"></ul>
         </div>
 
         <div class="column">
@@ -70,6 +72,10 @@
             <input type="number" id="groupCount" min="1" value="2">
             <button onclick="createGroups()">Gruppen erstellen</button>
             <div id="groups"></div>
+
+            <h2>Temporäre Klasse</h2>
+            <textarea id="tempClassInput" rows="5" placeholder="Namen hier einfügen (ein Name pro Zeile)"></textarea>
+            <button onclick="loadTempClass()">Temporäre Klasse laden</button>
         </div>
     </div>
 
