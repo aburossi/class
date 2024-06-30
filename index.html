@@ -51,6 +51,10 @@
                     select.appendChild(option);
                 });
                 loadClass(); // Load the first class by default
+            })
+            .catch(error => {
+                console.error('Error loading classes:', error);
+                alert('Failed to load classes. Check the console for details.');
             });
 
         function loadClass() {
