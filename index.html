@@ -1,40 +1,77 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Class Organizer</title>
+    <title>Allgemeinbildung</title>
     <style>
-        /* Add your CSS styles here */
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            gap: 20px;
+        }
+        .column {
+            flex: 1;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        select, input, button, textarea {
+            margin-bottom: 10px;
+            width: 100%;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        #selectedName {
+            font-weight: bold;
+            color: #007bff;
+        }
     </style>
 </head>
 <body>
-    <h1>Class Organizer</h1>
+    <h1>Allgemeinbildung</h1>
 
-    <h2>Select Class</h2>
-    <select id="classSelect" onchange="loadClass()"></select>
+    <div class="container">
+        <div class="column">
+            <h2>Klasse auswählen</h2>
+            <select id="classSelect" onchange="loadClass()"></select>
 
-    <h2>Class List</h2>
-    <ul id="nameList"></ul>
+            <h2>Temporäre Klasse</h2>
+            <textarea id="tempClassInput" rows="5" placeholder="Namen hier einfügen (ein Name pro Zeile)"></textarea>
+            <button onclick="loadTempClass()">Temporäre Klasse laden</button>
 
-    <h2>Random Name</h2>
-    <button onclick="selectRandomName()">Select Random Name</button>
-    <p id="selectedName"></p>
+            <h2>Klassenliste</h2>
+            <ul id="nameList"></ul>
 
-    <h2>Create Groups</h2>
-    <input type="number" id="groupCount" min="1" value="2">
-    <button onclick="createGroups()">Create Groups</button>
-    <div id="groups"></div>
+            <h2>Zufälliger Name</h2>
+            <button onclick="selectRandomName()">Zufälligen Namen auswählen</button>
+            <p id="selectedName"></p>
+        </div>
 
-    <h2>Timer</h2>
-    <select id="timerDuration">
-        <option value="900">15 minutes</option>
-        <option value="600">10 minutes</option>
-        <option value="300">5 minutes</option>
-        <option value="180">3 minutes</option>
-    </select>
-    <button onclick="startTimer()">Start Timer</button>
-    <p id="timerDisplay"></p>
+        <div class="column">
+            <h2>Timer</h2>
+            <select id="timerDuration">
+                <option value="900">15 Minuten</option>
+                <option value="600">10 Minuten</option>
+                <option value="300">5 Minuten</option>
+                <option value="180">3 Minuten</option>
+            </select>
+            <button onclick="startTimer()">Timer starten</button>
+            <p id="timerDisplay"></p>
+
+            <h2>Gruppen erstellen</h2>
+            <input type="number" id="groupCount" min="1" value="2">
+            <button onclick="createGroups()">Gruppen erstellen</button>
+            <div id="groups"></div>
+        </div>
+    </div>
 
     <script>
         let names = [];
@@ -54,7 +91,7 @@
             })
             .catch(error => {
                 console.error('Error loading classes:', error);
-                alert('Failed to load classes. Check the console for details.');
+                alert('Fehler beim Laden der Klassen. Überprüfen Sie die Konsole für Details.');
             });
 
         function loadClass() {
@@ -63,26 +100,40 @@
                 .then(response => response.json())
                 .then(data => {
                     names = data.students;
-                    const nameList = document.getElementById('nameList');
-                    nameList.innerHTML = names.map(name => `<li>${name}</li>`).join('');
+                    updateNameList();
+                })
+                .catch(error => {
+                    console.error('Error loading class:', error);
+                    alert('Fehler beim Laden der Klasse. Überprüfen Sie die Konsole für Details.');
                 });
+        }
+
+        function loadTempClass() {
+            const tempInput = document.getElementById('tempClassInput').value;
+            names = tempInput.split('\n').filter(name => name.trim() !== '');
+            updateNameList();
+        }
+
+        function updateNameList() {
+            const nameList = document.getElementById('nameList');
+            nameList.innerHTML = names.map(name => `<li>${name}</li>`).join('');
         }
 
         function selectRandomName() {
             if (names.length === 0) {
-                alert('No names available');
+                alert('Keine Namen verfügbar');
                 return;
             }
             const index = Math.floor(Math.random() * names.length);
             const selectedName = names.splice(index, 1)[0];
             document.getElementById('selectedName').textContent = selectedName;
-            loadClass(); // Reload the class list to reflect the removed name
+            updateNameList();
         }
 
         function createGroups() {
             const groupCount = parseInt(document.getElementById('groupCount').value);
             if (isNaN(groupCount) || groupCount < 1) {
-                alert('Invalid group count');
+                alert('Ungültige Gruppenanzahl');
                 return;
             }
             const shuffledNames = [...names].sort(() => Math.random() - 0.5);
@@ -92,7 +143,7 @@
             });
             const groupsDiv = document.getElementById('groups');
             groupsDiv.innerHTML = groups.map((group, index) => 
-                `<p>Group ${index + 1}: ${group.join(', ')}</p>`
+                `<p>Gruppe ${index + 1}: ${group.join(', ')}</p>`
             ).join('');
         }
 
@@ -105,7 +156,7 @@
                 display.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
                 if (--duration < 0) {
                     clearInterval(timer);
-                    display.textContent = 'Time\'s up!';
+                    display.textContent = 'Zeit abgelaufen!';
                 }
             }, 1000);
         }
