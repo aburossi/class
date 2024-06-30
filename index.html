@@ -39,6 +39,14 @@
             font-weight: bold;
             color: #ffd700;
         }
+        #timerDisplay {
+            font-size: 4em;
+            text-align: center;
+            margin: 20px 0;
+        }
+        #nameList {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -53,25 +61,19 @@
             <button onclick="selectRandomName()">Zufälligen Namen auswählen</button>
             <p id="selectedName"></p>
 
-            <h2>Klassenliste</h2>
+            <h2>Gruppen erstellen</h2>
+            <input type="number" id="groupCount" min="1" value="2">
+            <button onclick="createGroups()">Gruppen erstellen</button>
+            <div id="groups"></div>
+
             <ul id="nameList"></ul>
         </div>
 
         <div class="column">
             <h2>Timer</h2>
-            <select id="timerDuration">
-                <option value="900">15 Minuten</option>
-                <option value="600">10 Minuten</option>
-                <option value="300">5 Minuten</option>
-                <option value="180">3 Minuten</option>
-            </select>
+            <input type="number" id="timerMinutes" min="1" value="5" placeholder="Minuten">
             <button onclick="startTimer()">Timer starten</button>
-            <p id="timerDisplay"></p>
-
-            <h2>Gruppen erstellen</h2>
-            <input type="number" id="groupCount" min="1" value="2">
-            <button onclick="createGroups()">Gruppen erstellen</button>
-            <div id="groups"></div>
+            <div id="timerDisplay"></div>
 
             <h2>Temporäre Klasse</h2>
             <textarea id="tempClassInput" rows="5" placeholder="Namen hier einfügen (ein Name pro Zeile)"></textarea>
@@ -154,14 +156,15 @@
         }
 
         function startTimer() {
-            let duration = parseInt(document.getElementById('timerDuration').value);
+            let duration = parseInt(document.getElementById('timerMinutes').value) * 60;
             const display = document.getElementById('timerDisplay');
-            const timer = setInterval(() => {
+            clearInterval(window.timerInterval);
+            window.timerInterval = setInterval(() => {
                 const minutes = Math.floor(duration / 60);
                 const seconds = duration % 60;
                 display.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
                 if (--duration < 0) {
-                    clearInterval(timer);
+                    clearInterval(window.timerInterval);
                     display.textContent = 'Zeit abgelaufen!';
                 }
             }, 1000);
