@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Class Organizer</title>
+    <style>
+        /* Add your CSS styles here */
+    </style>
+</head>
+<body>
+    <h1>Class Organizer</h1>
+
+    <h2>Class List</h2>
+    <textarea id="nameList" rows="10" cols="30"></textarea>
+    <button onclick="loadNames()">Load Names</button>
+
+    <h2>Random Name</h2>
+    <button onclick="selectRandomName()">Select Random Name</button>
+    <p id="selectedName"></p>
+
+    <h2>Create Groups</h2>
+    <input type="number" id="groupCount" min="1" value="2">
+    <button onclick="createGroups()">Create Groups</button>
+    <div id="groups"></div>
+
+    <h2>Timer</h2>
+    <select id="timerDuration">
+        <option value="900">15 minutes</option>
+        <option value="600">10 minutes</option>
+        <option value="300">5 minutes</option>
+        <option value="180">3 minutes</option>
+    </select>
+    <button onclick="startTimer()">Start Timer</button>
+    <p id="timerDisplay"></p>
+
+    <script>
+        let names = [];
+
+        function loadNames() {
+            const nameList = document.getElementById('nameList').value;
+            names = nameList.split('\n').filter(name => name.trim() !== '');
+            alert(`Loaded ${names.length} names`);
+        }
+
+        function selectRandomName() {
+            if (names.length === 0) {
+                alert('No names available');
+                return;
+            }
+            const index = Math.floor(Math.random() * names.length);
+            const selectedName = names.splice(index, 1)[0];
+            document.getElementById('selectedName').textContent = selectedName;
+        }
+
+        function createGroups() {
+            const groupCount = parseInt(document.getElementById('groupCount').value);
+            if (isNaN(groupCount) || groupCount < 1) {
+                alert('Invalid group count');
+                return;
+            }
+            const shuffledNames = [...names].sort(() => Math.random() - 0.5);
+            const groups = Array.from({length: groupCount}, () => []);
+            shuffledNames.forEach((name, index) => {
+                groups[index % groupCount].push(name);
+            });
+            const groupsDiv = document.getElementById('groups');
+            groupsDiv.innerHTML = groups.map((group, index) => 
+                `<p>Group ${index + 1}: ${group.join(', ')}</p>`
+            ).join('');
+        }
+
+        function startTimer() {
+            let duration = parseInt(document.getElementById('timerDuration').value);
+            const display = document.getElementById('timerDisplay');
+            const timer = setInterval(() => {
+                const minutes = Math.floor(duration / 60);
+                const seconds = duration % 60;
+                display.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                if (--duration < 0) {
+                    clearInterval(timer);
+                    display.textContent = 'Time\'s up!';
+                }
+            }, 1000);
+        }
+    </script>
+</body>
+</html>
