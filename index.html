@@ -78,10 +78,14 @@
             <div id="timerDisplay"></div>
 
             <h2>Neue Klasse</h2>
-            <textarea id="tempClassInput" rows="5" placeholder="Namen hier einfügen (ein Name pro Zeile)"></textarea>
-            <button onclick="loadTempClass()">Neue Klasse laden</button>
+            <label>
+                <input type="checkbox" id="showNewClassCheckbox"> Neue Klasse hinzufügen
+            </label>
+            <div id="newClassSection" style="display: none;">
+                <textarea id="tempClassInput" rows="5" placeholder="Namen hier einfügen (ein Name pro Zeile)"></textarea>
+                <button onclick="loadTempClass()">Neue Klasse laden</button>
+            </div>
         </div>
-    </div>
     <audio id="timerSound" src="https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3"></audio>
     <script>
         let names = [];
@@ -156,7 +160,13 @@
                 `<p>Gruppe ${index + 1}: ${group.join(', ')}</p>`
             ).join('');
         }
-
+        
+        function toggleNewClassSection() {
+            const checkbox = document.getElementById('showNewClassCheckbox');
+            const newClassSection = document.getElementById('newClassSection');
+            newClassSection.style.display = checkbox.checked ? 'block' : 'none';
+        }
+        
         function startTimer() {
             let duration = parseInt(document.getElementById('timerMinutes').value) * 60;
             const display = document.getElementById('timerDisplay');
@@ -173,6 +183,7 @@
                 }
             }, 1000);
         }
+    document.getElementById('showNewClassCheckbox').addEventListener('change', toggleNewClassSection); 
     </script>
 </body>
 </html>
