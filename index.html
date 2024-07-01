@@ -79,7 +79,7 @@
 
             <h2>Neue Klasse</h2>
             <label>
-                <input type="checkbox" id="showNewClassCheckbox"> +
+                <input type="checkbox" id="showNewClassCheckbox">
             </label>
             <div id="newClassSection" style="display: none;">
                 <textarea id="tempClassInput" rows="5" placeholder="Namen hier einfügen (ein Name pro Zeile)"></textarea>
@@ -185,5 +185,34 @@
         }
     document.getElementById('showNewClassCheckbox').addEventListener('change', toggleNewClassSection); 
     </script>
+    <div class="footer-links">
+        <h2>Nützliche Links</h2>
+        <ul>
+            <li><a href="https://absenzen.bbw.ch/absenzen/" target="_blank">Absenzkontrolle</a></li>
+            <li><a href="https://olat.bbw.ch/dmz/" target="_blank">OLAT</a></li>
+        </ul>
+    </div>
+
+    <style>
+        .footer-links {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #555;
+        }
+        .footer-links ul {
+            padding: 0;
+        }
+        .footer-links li {
+            margin-bottom: 10px;
+        }
+        .footer-links a {
+            color: #ffd700;
+            text-decoration: none;
+        }
+        .footer-links a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</body>
 </body>
 </html>
