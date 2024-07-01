@@ -56,21 +56,19 @@
     
     <div class="container">
         <div class="column">
-            <h2>Klasse auswählen</h2>
-            <select id="classSelect" onchange="loadClass()"></select>
-
-            <h2>Zufälliger Name</h2>
-            <button onclick="selectRandomName()">Zufälligen Namen auswählen</button>
-            <p id="selectedName"></p>
-
-            <h2>Gruppen erstellen</h2>
-            <input type="number" id="groupCount" min="1" value="2">
-            <button onclick="createGroups()">Gruppen erstellen</button>
-            <div id="groups"></div>
-
-            <ul id="nameList"></ul>    
-        </div>
-
+            <h2>Klassen auswählen</h2>
+            <div id="classCheckboxes"></div>
+        
+            <div id="newClassContainer" style="display: none;">
+                <h2>Neue Klasse</h2>
+                <label>
+                    <input type="checkbox" id="showNewClassCheckbox"> Neue Klasse hinzufügen
+                </label>
+                <div id="newClassSection" style="display: none;">
+                    <textarea id="tempClassInput" rows="5" placeholder="Namen hier einfügen (ein Name pro Zeile)"></textarea>
+                    <button onclick="loadTempClass()">Neue Klasse laden</button>
+                </div>
+            </div>
         <div class="column">
             <h2>Timer</h2>
             <input type="number" id="timerMinutes" min="1" value="5" placeholder="Minuten">
@@ -89,31 +87,55 @@
     <audio id="timerSound" src="https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3"></audio>
     <script>
         let names = [];
+        let classes = [];
 
         // Load available classes
         fetch('classes.json')
             .then(response => response.json())
-            .then(classes => {
-                const select = document.getElementById('classSelect');
+            .then(classData => {
+                classes = classData;
+                const classCheckboxes = document.getElementById('classCheckboxes');
                 classes.forEach(className => {
-                    const option = document.createElement('option');
-                    option.value = className;
-                    option.textContent = className.replace('.json', '');
-                    select.appendChild(option);
+                    const label = document.createElement('label');
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.value = className;
+                    checkbox.addEventListener('change', handleClassSelection);
+                    label.appendChild(checkbox);
+                    label.appendChild(document.createTextNode(className.replace('.json', '')));
+                    classCheckboxes.appendChild(label);
+                    classCheckboxes.appendChild(document.createElement('br'));
                 });
-                loadClass(); // Load the first class by default
+    
+                // Add "Neue Klasse" checkbox
+                const newClassLabel = document.createElement('label');
+                const newClassCheckbox = document.createElement('input');
+                newClassCheckbox.type = 'checkbox';
+                newClassCheckbox.id = 'newClassCheckbox';
+                newClassCheckbox.addEventListener('change', toggleNewClassContainer);
+                newClassLabel.appendChild(newClassCheckbox);
+                newClassLabel.appendChild(document.createTextNode('Neue Klasse'));
+                classCheckboxes.appendChild(newClassLabel);
             })
             .catch(error => {
                 console.error('Error loading classes:', error);
                 alert('Fehler beim Laden der Klassen. Überprüfen Sie die Konsole für Details.');
             });
-
-        function loadClass() {
-            const className = document.getElementById('classSelect').value;
+    
+        function handleClassSelection(event) {
+            const className = event.target.value;
+            if (event.target.checked) {
+                loadClass(className);
+            } else {
+                removeClassNames(className);
+            }
+        }
+    
+        function loadClass(className) {
             fetch(className)
                 .then(response => response.json())
                 .then(data => {
-                    names = data.students;
+                    names = names.concat(data.students);
                     updateNameList();
                 })
                 .catch(error => {
@@ -121,11 +143,28 @@
                     alert('Fehler beim Laden der Klasse. Überprüfen Sie die Konsole für Details.');
                 });
         }
-
-        function loadTempClass() {
-            const tempInput = document.getElementById('tempClassInput').value;
-            names = tempInput.split('\n').filter(name => name.trim() !== '');
-            updateNameList();
+    
+        function removeClassNames(className) {
+            fetch(className)
+                .then(response => response.json())
+                .then(data => {
+                    names = names.filter(name => !data.students.includes(name));
+                    updateNameList();
+                })
+                .catch(error => {
+                    console.error('Error removing class names:', error);
+                    alert('Fehler beim Entfernen der Klassennamen. Überprüfen Sie die Konsole für Details.');
+                });
+        }
+    
+        function toggleNewClassContainer() {
+            const newClassContainer = document.getElementById('newClassContainer');
+            newClassContainer.style.display = this.checked ? 'block' : 'none';
+        }
+    
+        function toggleNewClassSection() {
+            const newClassSection = document.getElementById('newClassSection');
+            newClassSection.style.display = this.checked ? 'block' : 'none';
         }
 
         function updateNameList() {
@@ -183,7 +222,9 @@
                 }
             }, 1000);
         }
-    document.getElementById('showNewClassCheckbox').addEventListener('change', toggleNewClassSection); 
+    document.getElementById('newClassCheckbox').addEventListener('change', toggleNewClassContainer);
+    document.getElementById('showNewClassCheckbox').addEventListener('change', toggleNewClassSection);
+
     </script>
 </body>
 </html>
