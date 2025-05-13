@@ -90,7 +90,7 @@
 
         #wheel-container {
             position: relative;
-            width: 320px; /* Slightly larger for border */
+            width: 320px;
             height: 320px;
             margin: 25px auto;
             display: flex;
@@ -99,28 +99,27 @@
         }
 
         #wheel {
-            width: 300px; /* Canvas size */
+            width: 300px; 
             height: 300px;
             border-radius: 50%;
-            /* border: 5px solid #5f6368; */ /* Canvas draws its own border if needed */
             position: relative;
             overflow: hidden;
-            transition: transform 5s cubic-bezier(0.33, 1, 0.68, 1); /* Smoother ease-out spin */
-            background-color: #f8f9fa; /* Fallback */
+            transition: transform 5s cubic-bezier(0.33, 1, 0.68, 1); 
+            background-color: #f8f9fa; 
         }
 
         #wheel canvas {
-            display: block; /* Removes extra space below canvas */
+            display: block; 
         }
 
-        #pointer { /* Pointer at 3 o'clock */
+        #pointer { /* Pointer at 3 o'clock, pointing inwards (left) */
             width: 0;
             height: 0;
             border-top: 15px solid transparent;
             border-bottom: 15px solid transparent;
-            border-left: 30px solid #d93025; /* Red pointer */
+            border-left: 30px solid #d93025; /* Red pointer, base on right, tip on left */
             position: absolute;
-            right: -5px; /* Positioned to the right, slightly overlapping wheel's edge */
+            right: -5px; /* Position its base slightly outside wheel container for tip alignment */
             top: 50%;
             transform: translateY(-50%);
             z-index: 10;
@@ -128,13 +127,13 @@
 
         #result {
             margin-top: 25px;
-            font-size: 2.2em; /* Larger font for chosen name */
+            font-size: 2.2em; 
             font-weight: bold;
             color: #1a73e8;
             padding: 15px;
-            background-color: #e8f0fe; /* Light blue background */
+            background-color: #e8f0fe; 
             border-radius: 8px;
-            min-height: 50px; /* Ensure space even when text is '?' */
+            min-height: 50px; 
             display: flex;
             align-items: center;
             justify-content: center;
@@ -147,12 +146,12 @@
             font-size: 0.95em;
         }
         .error-message {
-            color: #d93025; /* Material Red */
+            color: #d93025; 
             background-color: #fce8e6;
             border: 1px solid #d93025;
         }
         .info-message {
-            color: #1765c7; /* Darker Blue */
+            color: #1765c7; 
             background-color: #e8f0fe;
             border: 1px solid #1a73e8;
         }
@@ -201,21 +200,18 @@
         const studentsLeftDisplay = document.getElementById('studentsLeft');
         const repoInfoDisplay = document.getElementById('repoInfo');
 
-        // --- GitHub Configuration ---
-        // Option 1: Automatic Detection (primarily for GitHub Pages)
         let GITHUB_USER = '';
         let GITHUB_REPO = '';
-        const FOLDER_PATH = 'klassen'; // Your folder name
+        const FOLDER_PATH = 'klassen'; 
 
-        // Option 2: Manual Override (Uncomment and set these if auto-detection fails or for local use)
-        // const MANUAL_GITHUB_USER = "your-username";
-        // const MANUAL_GITHUB_REPO = "your-repo-name";
+        // const MANUAL_GITHUB_USER = "your-username"; // Uncomment for manual override
+        // const MANUAL_GITHUB_REPO = "your-repo-name"; // Uncomment for manual override
 
         const GITHUB_API_BASE = 'https://api.github.com/repos';
 
-        let currentStudents = [];
-        let availableStudents = [];
-        let classFilesData = []; // To store {name, download_url}
+        let allStudentsInClass = []; // Stores all names from the initially loaded class file
+        let availableStudentsToPick = []; // Stores names not yet picked
+        let classFilesData = []; 
 
         function setApiStatus(message, type = 'info') {
             apiStatus.textContent = message;
@@ -229,62 +225,55 @@
         }
 
         async function autoDetectRepoAndFetchClasses() {
-            // Check for manual override first
             if (typeof MANUAL_GITHUB_USER !== 'undefined' && MANUAL_GITHUB_USER &&
                 typeof MANUAL_GITHUB_REPO !== 'undefined' && MANUAL_GITHUB_REPO) {
                 GITHUB_USER = MANUAL_GITHUB_USER;
                 GITHUB_REPO = MANUAL_GITHUB_REPO;
-                setRepoInfo(`Using manual config: ${GITHUB_USER}/${GITHUB_REPO}. Fetching classes...`);
-                await fetchClasses();
-                return;
-            }
-
-            const hostname = window.location.hostname;
-            const pathname = window.location.pathname;
-
-            if (hostname.endsWith('github.io')) {
-                const parts = hostname.split('.');
-                GITHUB_USER = parts[0];
-                // For repositories like <user>.github.io/<repo>/
-                const pathSegments = pathname.split('/').filter(segment => segment.length > 0);
-                if (pathSegments.length > 0 && pathSegments[0] !== FOLDER_PATH && !pathSegments[0].endsWith('.html')) {
-                    GITHUB_REPO = pathSegments[0];
-                } else {
-                    // For user/org pages like <user>.github.io directly
-                    GITHUB_REPO = hostname;
-                }
-                setRepoInfo(`Detected: ${GITHUB_USER}/${GITHUB_REPO}. Fetching classes from '${FOLDER_PATH}'...`);
-                await fetchClasses();
-            } else if (window.location.protocol === 'file:') {
-                 setRepoInfo('Running locally. Automatic repo detection disabled.');
-                 setApiStatus('Please configure GITHUB_USER and GITHUB_REPO manually in the script for local use, or deploy to GitHub Pages.', 'error');
-                 // You might want to enable manual input fields here as a fallback
+                setRepoInfo(`Using manual config: ${GITHUB_USER}/${GITHUB_REPO}.`);
             } else {
-                setRepoInfo('Could not auto-detect GitHub repository.');
-                setApiStatus('Automatic repository detection failed. Please ensure this page is hosted on GitHub Pages or configure manually.', 'error');
+                const hostname = window.location.hostname;
+                const pathname = window.location.pathname;
+                if (hostname.endsWith('github.io')) {
+                    const parts = hostname.split('.');
+                    GITHUB_USER = parts[0];
+                    const pathSegments = pathname.split('/').filter(segment => segment.length > 0 && !segment.endsWith('.html'));
+                    if (pathSegments.length > 0 && pathSegments[0].toLowerCase() !== FOLDER_PATH.toLowerCase()) {
+                        GITHUB_REPO = pathSegments[0];
+                    } else {
+                        GITHUB_REPO = hostname;
+                    }
+                    setRepoInfo(`Detected: ${GITHUB_USER}/${GITHUB_REPO}.`);
+                } else if (window.location.protocol === 'file:') {
+                     setRepoInfo('Running locally. Automatic repo detection may not work.');
+                     setApiStatus('For local use, ensure GITHUB_USER and GITHUB_REPO are set manually in the script if issues arise, or deploy to GitHub Pages.', 'info');
+                     // Attempt to use manual if defined, otherwise this will likely fail if not on GH pages
+                     if (typeof MANUAL_GITHUB_USER !== 'undefined' && MANUAL_GITHUB_USER) GITHUB_USER = MANUAL_GITHUB_USER;
+                     if (typeof MANUAL_GITHUB_REPO !== 'undefined' && MANUAL_GITHUB_REPO) GITHUB_REPO = MANUAL_GITHUB_REPO;
+                } else {
+                    setRepoInfo('Could not auto-detect GitHub repository details.');
+                    setApiStatus('Automatic repository detection failed. Please ensure this page is hosted on GitHub Pages or configure GITHUB_USER/REPO manually in the script.', 'error');
+                    return; // Stop if no repo info
+                }
+            }
+            
+            if (GITHUB_USER && GITHUB_REPO) {
+                await fetchClassesList();
+            } else {
+                 setApiStatus('GitHub user and repository not determined. Cannot fetch classes.', 'error');
             }
         }
 
-
-        async function fetchClasses() {
-            if (!GITHUB_USER || !GITHUB_REPO) {
-                setApiStatus('GitHub user or repository not set.', 'error');
-                return;
-            }
-
-            setApiStatus('Fetching classes...', 'info');
+        async function fetchClassesList() {
+            setApiStatus(`Workspaceing classes from '${FOLDER_PATH}'...`, 'info');
             classSelectionGroup.style.display = 'none';
             wheelSection.style.display = 'none';
 
             try {
                 const response = await fetch(`${GITHUB_API_BASE}/${GITHUB_USER}/${GITHUB_REPO}/contents/${FOLDER_PATH}`);
                 if (!response.ok) {
-                    let errorMsg = `Error fetching classes: ${response.statusText} (Status: ${response.status}).`;
-                    if (response.status === 404) {
-                        errorMsg = `Folder '${FOLDER_PATH}' not found in ${GITHUB_USER}/${GITHUB_REPO}, or repository is private/incorrect.`;
-                    } else if (response.status === 403) {
-                         errorMsg = 'API rate limit exceeded or access forbidden. Wait a bit or check repo permissions.';
-                    }
+                    let errorMsg = `Error fetching classes list: ${response.statusText} (Status: ${response.status}).`;
+                    if (response.status === 404) errorMsg = `Folder '${FOLDER_PATH}' not found in ${GITHUB_USER}/${GITHUB_REPO}, or repository is private/incorrect.`;
+                    else if (response.status === 403) errorMsg = 'API rate limit exceeded or access forbidden. Check repo permissions/API limits.';
                     throw new Error(errorMsg);
                 }
                 const data = await response.json();
@@ -294,18 +283,18 @@
                     .map(file => ({ name: file.name.replace('.txt', ''), download_url: file.download_url }));
 
                 if (classFilesData.length === 0) {
-                    setApiStatus(`No .txt files found in the '${FOLDER_PATH}' folder of ${GITHUB_USER}/${GITHUB_REPO}.`, 'error');
+                    setApiStatus(`No .txt files found in '${FOLDER_PATH}' of ${GITHUB_USER}/${GITHUB_REPO}.`, 'error');
                     return;
                 }
 
                 populateClassSelector();
                 classSelectionGroup.style.display = 'block';
-                setApiStatus('Classes loaded. Please select a class.', 'info');
-                repoInfoDisplay.style.display = 'none'; // Hide repo info once classes are loaded
+                setApiStatus('Classes list loaded. Please select a class.', 'info');
+                repoInfoDisplay.style.display = 'none';
 
             } catch (error) {
-                console.error('Error fetching classes:', error);
-                setApiStatus(`Error: ${error.message}`, 'error');
+                console.error('Error fetching classes list:', error);
+                setApiStatus(`${error.message}`, 'error');
             }
         }
 
@@ -322,14 +311,15 @@
 
         classSelect.addEventListener('change', async (event) => {
             const fileUrl = event.target.value;
-            resultDisplay.textContent = '?'; // Reset result display
+            resultDisplay.textContent = '?'; 
             studentsLeftDisplay.style.display = 'none';
-            wheel.style.transform = 'rotate(0deg)'; // Reset wheel rotation visually
+            wheel.style.transform = 'rotate(0deg)'; 
+            currentWheelRotation = 0; // Reset wheel rotation state
 
             if (!fileUrl) {
                 wheelSection.style.display = 'none';
-                currentStudents = [];
-                availableStudents = [];
+                allStudentsInClass = [];
+                availableStudentsToPick = [];
                 spinBtn.disabled = true;
                 drawWheel([]);
                 return;
@@ -340,20 +330,19 @@
 
             try {
                 const response = await fetch(fileUrl);
-                if (!response.ok) {
-                    throw new Error(`Workspaceing student list failed: ${response.statusText}`);
-                }
+                if (!response.ok) throw new Error(`Workspaceing student list failed: ${response.statusText}`);
+                
                 const textContent = await response.text();
-                currentStudents = textContent.split('\n').map(name => name.trim()).filter(name => name.length > 0);
-                availableStudents = [...currentStudents];
+                allStudentsInClass = textContent.split('\n').map(name => name.trim()).filter(name => name.length > 0);
+                availableStudentsToPick = [...allStudentsInClass];
 
-                if (availableStudents.length === 0) {
+                if (allStudentsInClass.length === 0) {
                     setApiStatus('No students found in this class file, or file is empty/misformatted.', 'error');
                     wheelSection.style.display = 'block';
                     spinBtn.disabled = true;
                     drawWheel([]);
                 } else {
-                    drawWheel(availableStudents);
+                    drawWheel(allStudentsInClass); // Draw wheel with ALL students
                     wheelSection.style.display = 'block';
                     spinBtn.disabled = false;
                     updateStudentsLeftDisplay();
@@ -361,27 +350,27 @@
                 }
 
             } catch (error) {
-                console.error('Error fetching student list:', error);
+                console.error('Error loading student list:', error);
                 setApiStatus(`Error loading students: ${error.message}`, 'error');
-                wheelSection.style.display = 'block'; // Show section to display error within it
+                wheelSection.style.display = 'block'; 
                 spinBtn.disabled = true;
-                drawWheel([]); // Draw empty wheel on error
+                drawWheel([]); 
             }
         });
 
         let isSpinning = false;
-        let currentWheelRotation = 0; // Tracks the actual rotation for CSS
+        let currentWheelRotation = 0; 
 
-        function drawWheel(names) {
+        function drawWheel(namesToDraw) { // Renamed parameter for clarity
             const ctx = wheelCanvas.getContext('2d');
-            const numSegments = names.length;
+            const numSegments = namesToDraw.length;
             const canvasSize = 300;
             wheelCanvas.width = canvasSize;
             wheelCanvas.height = canvasSize;
 
             const centerX = canvasSize / 2;
             const centerY = canvasSize / 2;
-            const radius = canvasSize / 2 - 5; // Leave a small margin for border/look
+            const radius = canvasSize / 2 - 5; 
 
             ctx.clearRect(0, 0, canvasSize, canvasSize);
 
@@ -401,12 +390,10 @@
             }
 
             const anglePerSegment = (2 * Math.PI) / numSegments;
-            // Vibrant and distinct colors
             const colors = ["#4285F4", "#DB4437", "#F4B400", "#0F9D58", "#AB47BC", "#00ACC1", "#FF7043", "#7E57C2", "#5C6BC0", "#26A69A"];
+            ctx.font = 'bold 13px "Segoe UI", Arial'; 
 
-            ctx.font = 'bold 13px "Segoe UI", Arial'; // Adjusted font size slightly
-
-            names.forEach((name, i) => {
+            namesToDraw.forEach((name, i) => {
                 const startAngle = i * anglePerSegment;
                 const endAngle = (i + 1) * anglePerSegment;
 
@@ -416,89 +403,74 @@
                 ctx.closePath();
                 ctx.fillStyle = colors[i % colors.length];
                 ctx.fill();
-                ctx.strokeStyle = '#fff'; // White lines between segments
+                ctx.strokeStyle = '#fff'; 
                 ctx.lineWidth = 2;
                 ctx.stroke();
 
-                // Draw text
                 ctx.save();
                 ctx.translate(centerX, centerY);
-                // Rotate to the middle of the segment
-                // The 0 angle is at 3 o'clock. Text should be written along this line.
                 ctx.rotate(startAngle + anglePerSegment / 2);
-                
-                ctx.textAlign = 'right'; // Text flows away from center
+                ctx.textAlign = 'right'; 
                 ctx.textBaseline = 'middle';
-                ctx.fillStyle = '#ffffff'; // White text for better contrast on colored segments
+                ctx.fillStyle = '#ffffff'; 
                 
                 const displayName = name.length > 15 ? name.substring(0, 13) + '...' : name;
-                ctx.fillText(displayName, radius - 10, 0); // Draw text near the edge
+                ctx.fillText(displayName, radius - 10, 0); 
                 ctx.restore();
             });
         }
 
         spinBtn.addEventListener('click', () => {
-            if (isSpinning || availableStudents.length === 0) return;
+            if (isSpinning || availableStudentsToPick.length === 0) return;
 
             isSpinning = true;
             spinBtn.disabled = true;
             resultDisplay.textContent = 'Spinning...';
 
-            const numSegments = availableStudents.length;
-            const randomIndex = Math.floor(Math.random() * numSegments);
-            const selectedName = availableStudents[randomIndex];
+            // Select a winner from the *available* students
+            const winnerName = availableStudentsToPick[Math.floor(Math.random() * availableStudentsToPick.length)];
             
-            // Angle for each segment in degrees
-            const anglePerSegmentDegrees = 360 / numSegments;
-            // The middle of the target segment (degrees). Segment 0 starts at 3 o'clock.
-            // Angle is measured clockwise from 3 o'clock.
-            const targetSegmentMiddleAngleDegrees = (randomIndex + 0.5) * anglePerSegmentDegrees;
+            // Find the winner's index in the *original full list* for visual targeting
+            const visualIndexOfWinner = allStudentsInClass.indexOf(winnerName);
+            const numTotalSegmentsOnWheel = allStudentsInClass.length;
+
+            const anglePerSegmentDegrees = 360 / numTotalSegmentsOnWheel;
+            const targetSegmentMiddleAngleDegrees = (visualIndexOfWinner + 0.5) * anglePerSegmentDegrees;
             
-            // We want this targetSegmentMiddleAngleDegrees to align with the 0-degree pointer (3 o'clock).
-            // So, the wheel needs to rotate by -(targetSegmentMiddleAngleDegrees).
-            // Add multiple full rotations for visual effect + a small random offset for variability.
-            const randomExtraRotations = 3 + Math.floor(Math.random() * 3); // 3 to 5 full spins
-            // Subtract target angle to bring it to 0. Add a small random jitter.
+            const randomExtraRotations = 3 + Math.floor(Math.random() * 3); 
             const targetRotation = (randomExtraRotations * 360) - targetSegmentMiddleAngleDegrees + (Math.random() * anglePerSegmentDegrees * 0.4 - anglePerSegmentDegrees * 0.2);
 
-
-            currentWheelRotation += targetRotation; // Accumulate rotation
+            currentWheelRotation += targetRotation; 
             wheel.style.transform = `rotate(${currentWheelRotation}deg)`;
 
             setTimeout(() => {
                 isSpinning = false;
-                if (availableStudents.length > 0) { // Check again
-                    resultDisplay.textContent = `${selectedName}`; // Just the name, bigger
-                    
-                    availableStudents.splice(randomIndex, 1);
-                    updateStudentsLeftDisplay();
-
-                    if (availableStudents.length > 0) {
-                        // No need to redraw the wheel if names aren't changing visually,
-                        // but if you want to remove the segment visually, you'd redraw.
-                        // For simplicity, we are not redrawing segments, only tracking internally.
-                        // If you want segments to disappear, call drawWheel(availableStudents) here.
-                        // For now, let's assume the visual segments remain for simplicity,
-                        // and the pool of 'availableStudents' is what matters.
-                        // To make it visually clear, we SHOULD redraw.
-                        drawWheel(availableStudents);
-                        spinBtn.disabled = false;
-                    } else {
-                        drawWheel([]); // Draw empty wheel
-                        resultDisplay.textContent = `${selectedName}`; // Show final selected name
-                        studentsLeftDisplay.textContent = 'All students have been picked!';
-                        studentsLeftDisplay.style.display = 'block';
-                        spinBtn.disabled = true;
-                    }
+                resultDisplay.textContent = `${winnerName}`;
+                
+                const winnerIdxInAvailable = availableStudentsToPick.indexOf(winnerName);
+                if (winnerIdxInAvailable > -1) {
+                    availableStudentsToPick.splice(winnerIdxInAvailable, 1);
                 }
-            }, 5000); // Match CSS transition duration
+                updateStudentsLeftDisplay();
+
+                if (availableStudentsToPick.length > 0) {
+                    // DO NOT redraw the wheel. It keeps showing all original names.
+                    spinBtn.disabled = false;
+                } else {
+                    // All students picked. Now clear the wheel.
+                    drawWheel([]); 
+                    studentsLeftDisplay.textContent = 'All students have been picked!';
+                    studentsLeftDisplay.style.display = 'block';
+                    spinBtn.disabled = true;
+                }
+            }, 5000); 
         });
         
         function updateStudentsLeftDisplay() {
-            if (availableStudents.length > 0) {
-                studentsLeftDisplay.textContent = `${availableStudents.length} student(s) remaining.`;
+            if (availableStudentsToPick.length > 0) {
+                studentsLeftDisplay.textContent = `${availableStudentsToPick.length} student(s) remaining to be picked.`;
                 studentsLeftDisplay.style.display = 'block';
-            } else if (currentStudents.length > 0 && availableStudents.length === 0) {
+            } else if (allStudentsInClass.length > 0 && availableStudentsToPick.length === 0) {
                  studentsLeftDisplay.textContent = 'All students have been picked!';
                  studentsLeftDisplay.style.display = 'block';
             }
@@ -507,9 +479,8 @@
             }
         }
 
-        // --- Initial Load ---
         window.onload = () => {
-            drawWheel([]); // Draw an empty wheel initially
+            drawWheel([]); 
             autoDetectRepoAndFetchClasses();
         };
     </script>
