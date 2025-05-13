@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Picker Wheel</title>
+    <title>Student Picker Cylinder</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -88,52 +88,54 @@
             box-shadow: none;
         }
 
-        #wheel-container {
+        #wheel-container { /* Renamed semantically, but reusing ID for less JS change */
             position: relative;
-            width: 320px;
-            height: 320px;
+            width: 320px; /* Width of the cylinder viewport */
+            height: 70px; /* Height of the cylinder viewport + some padding */
             margin: 25px auto;
             display: flex;
             align-items: center;
             justify-content: center;
+            background-color: #e8f0fe; /* Light background for contrast with pointer */
+            border: 1px solid #dadce0;
+            border-radius: 4px;
         }
 
-        #wheel {
-            width: 300px; 
-            height: 300px;
-            border-radius: 50%;
+        #wheel { /* This is the viewport for the canvas */
+            width: 300px;  /* Canvas width */
+            height: 50px; /* Canvas height */
             position: relative;
             overflow: hidden;
-            transition: transform 5s cubic-bezier(0.33, 1, 0.68, 1); 
-            background-color: #f8f9fa; 
+            background-color: #f8f9fa;
+            /* No border-radius for cylinder, no CSS transform for spinning */
         }
 
         #wheel canvas {
-            display: block; 
+            display: block;
+            /* width and height set in JS */
         }
 
-        #pointer { /* Pointer at 3 o'clock, pointing inwards (left) */
-            width: 0;
-            height: 0;
-            border-top: 15px solid transparent;
-            border-bottom: 15px solid transparent;
-            border-left: 30px solid #d93025; /* Red pointer, base on right, tip on left */
+        #pointer { /* Vertical line pointer */
+            width: 3px;
+            height: 40px; /* Adjust to be less than canvas viewport height */
+            background-color: #d93025; /* Red pointer */
             position: absolute;
-            right: -5px; /* Position its base slightly outside wheel container for tip alignment */
+            left: 50%;
             top: 50%;
-            transform: translateY(-50%);
+            transform: translate(-50%, -50%);
             z-index: 10;
+            border-radius: 1px;
         }
 
         #result {
             margin-top: 25px;
-            font-size: 2.2em; 
+            font-size: 2.2em;
             font-weight: bold;
             color: #1a73e8;
             padding: 15px;
-            background-color: #e8f0fe; 
+            background-color: #e8f0fe;
             border-radius: 8px;
-            min-height: 50px; 
+            min-height: 50px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -146,12 +148,12 @@
             font-size: 0.95em;
         }
         .error-message {
-            color: #d93025; 
+            color: #d93025;
             background-color: #fce8e6;
             border: 1px solid #d93025;
         }
         .info-message {
-            color: #1765c7; 
+            color: #1765c7;
             background-color: #e8f0fe;
             border: 1px solid #1a73e8;
         }
@@ -160,11 +162,10 @@
             color: #5f6368;
             margin-top: 5px;
         }
-    </style>
-</head>
+    </style></head>
 <body>
     <div class="container">
-        <h1>Student Picker Wheel</h1>
+        <h1>Student Picker Cylinder</h1>
 
         <p id="repoInfo" class="subtle-message">Attempting to load classes...</p>
         <p id="apiStatus" class="message" style="display:none;"></p>
@@ -175,17 +176,17 @@
         </div>
 
         <div id="wheel-section" style="display:none;">
-            <h2>Spin the Wheel!</h2>
+            <h2>Roll the Cylinder!</h2>
             <div id="wheel-container">
                 <div id="pointer"></div>
-                <div id="wheel">
+                <div id="wheel"> {/* This is now the viewport for the canvas cylinder */}
                     <canvas id="wheelCanvas"></canvas>
                 </div>
             </div>
-            <button id="spinBtn" disabled>Spin</button>
+            <button id="spinBtn" disabled>Roll</button>
             <div id="result">?</div>
         </div>
-         <p id="studentsLeft" class="message info-message" style="display:none;"></p>
+        <p id="studentsLeft" class="message info-message" style="display:none;"></p>
     </div>
 
     <script>
@@ -193,7 +194,7 @@
         const classSelectionGroup = document.getElementById('classSelectionGroup');
         const wheelSection = document.getElementById('wheel-section');
         const spinBtn = document.getElementById('spinBtn');
-        const wheel = document.getElementById('wheel');
+        // const wheelDiv = document.getElementById('wheel'); // We still have this div as canvas container
         const wheelCanvas = document.getElementById('wheelCanvas');
         const resultDisplay = document.getElementById('result');
         const apiStatus = document.getElementById('apiStatus');
@@ -202,16 +203,25 @@
 
         let GITHUB_USER = '';
         let GITHUB_REPO = '';
-        const FOLDER_PATH = 'klassen'; 
+        const FOLDER_PATH = 'klassen';
 
-        // const MANUAL_GITHUB_USER = "your-username"; // Uncomment for manual override
-        // const MANUAL_GITHUB_REPO = "your-repo-name"; // Uncomment for manual override
+        // const MANUAL_GITHUB_USER = "your-username";
+        // const MANUAL_GITHUB_REPO = "your-repo-name";
 
         const GITHUB_API_BASE = 'https://api.github.com/repos';
 
-        let allStudentsInClass = []; // Stores all names from the initially loaded class file
-        let availableStudentsToPick = []; // Stores names not yet picked
-        let classFilesData = []; 
+        let allStudentsInClass = [];
+        let availableStudentsToPick = [];
+        let classFilesData = [];
+
+        let isSpinning = false; // Changed from isSpinning
+        // === Cylinder Specific Variables ===
+        let currentCylinderItems = []; // Items currently displayed on the cylinder
+        let currentScrollOffset = 0; // Horizontal scroll position of the cylinder items
+        const ITEM_WIDTH = 150; // Apparent width of each item slot on the cylinder
+        const CYLINDER_TEXT_COLOR = '#333333';
+        const CYLINDER_FONT = 'bold 18px "Segoe UI", Arial';
+        // === End Cylinder Specific Variables ===
 
         function setApiStatus(message, type = 'info') {
             apiStatus.textContent = message;
@@ -240,26 +250,29 @@
                     if (pathSegments.length > 0 && pathSegments[0].toLowerCase() !== FOLDER_PATH.toLowerCase()) {
                         GITHUB_REPO = pathSegments[0];
                     } else {
-                        GITHUB_REPO = hostname;
+                         // If repo is the root of the github.io page, or if the first path segment IS the folder_path
+                        // this logic might need adjustment based on actual GH pages deployment structure.
+                        // For a URL like user.github.io/repoName/, pathSegments[0] is 'repoName'
+                        // For user.github.io/ (where repo is user.github.io), pathSegments is empty.
+                        GITHUB_REPO = pathSegments[0] || GITHUB_USER + ".github.io"; // Fallback for root repo
                     }
                     setRepoInfo(`Detected: ${GITHUB_USER}/${GITHUB_REPO}.`);
                 } else if (window.location.protocol === 'file:') {
-                     setRepoInfo('Running locally. Automatic repo detection may not work.');
-                     setApiStatus('For local use, ensure GITHUB_USER and GITHUB_REPO are set manually in the script if issues arise, or deploy to GitHub Pages.', 'info');
-                     // Attempt to use manual if defined, otherwise this will likely fail if not on GH pages
-                     if (typeof MANUAL_GITHUB_USER !== 'undefined' && MANUAL_GITHUB_USER) GITHUB_USER = MANUAL_GITHUB_USER;
-                     if (typeof MANUAL_GITHUB_REPO !== 'undefined' && MANUAL_GITHUB_REPO) GITHUB_REPO = MANUAL_GITHUB_REPO;
+                    setRepoInfo('Running locally. Automatic repo detection may not work.');
+                    setApiStatus('For local use, ensure GITHUB_USER and GITHUB_REPO are set manually in the script if issues arise, or deploy to GitHub Pages.', 'info');
+                    if (typeof MANUAL_GITHUB_USER !== 'undefined' && MANUAL_GITHUB_USER) GITHUB_USER = MANUAL_GITHUB_USER;
+                    if (typeof MANUAL_GITHUB_REPO !== 'undefined' && MANUAL_GITHUB_REPO) GITHUB_REPO = MANUAL_GITHUB_REPO;
                 } else {
                     setRepoInfo('Could not auto-detect GitHub repository details.');
                     setApiStatus('Automatic repository detection failed. Please ensure this page is hosted on GitHub Pages or configure GITHUB_USER/REPO manually in the script.', 'error');
-                    return; // Stop if no repo info
+                    return;
                 }
             }
-            
+
             if (GITHUB_USER && GITHUB_REPO) {
                 await fetchClassesList();
             } else {
-                 setApiStatus('GitHub user and repository not determined. Cannot fetch classes.', 'error');
+                setApiStatus('GitHub user and repository not determined. Cannot fetch classes.', 'error');
             }
         }
 
@@ -272,12 +285,12 @@
                 const response = await fetch(`${GITHUB_API_BASE}/${GITHUB_USER}/${GITHUB_REPO}/contents/${FOLDER_PATH}`);
                 if (!response.ok) {
                     let errorMsg = `Error fetching classes list: ${response.statusText} (Status: ${response.status}).`;
-                    if (response.status === 404) errorMsg = `Folder '${FOLDER_PATH}' not found in ${GITHUB_USER}/${GITHUB_REPO}, or repository is private/incorrect.`;
+                    if (response.status === 404) errorMsg = `Folder '${FOLDER_PATH}' not found in ${GITHUB_USER}/${GITHUB_REPO}, or repository is private/incorrect. Check path and permissions.`;
                     else if (response.status === 403) errorMsg = 'API rate limit exceeded or access forbidden. Check repo permissions/API limits.';
                     throw new Error(errorMsg);
                 }
                 const data = await response.json();
-                
+
                 classFilesData = data
                     .filter(file => file.type === 'file' && file.name.endsWith('.txt'))
                     .map(file => ({ name: file.name.replace('.txt', ''), download_url: file.download_url }));
@@ -303,7 +316,7 @@
             classFilesData.forEach(file => {
                 const option = document.createElement('option');
                 option.value = file.download_url;
-                option.textContent = file.name;
+                option.textContent = file.name; // This is the class name (filename without .txt)
                 classSelect.appendChild(option);
             });
             wheelSection.style.display = 'none';
@@ -311,176 +324,217 @@
 
         classSelect.addEventListener('change', async (event) => {
             const fileUrl = event.target.value;
-            resultDisplay.textContent = '?'; 
+            const selectedOptionText = event.target.options[event.target.selectedIndex].text;
+
+            resultDisplay.textContent = '?';
             studentsLeftDisplay.style.display = 'none';
-            wheel.style.transform = 'rotate(0deg)'; 
-            currentWheelRotation = 0; // Reset wheel rotation state
+            // No CSS transform reset needed for wheel div
 
             if (!fileUrl) {
                 wheelSection.style.display = 'none';
                 allStudentsInClass = [];
                 availableStudentsToPick = [];
                 spinBtn.disabled = true;
-                drawWheel([]);
+                currentCylinderItems = ["Select a Class"];
+                currentScrollOffset = calculateTargetScrollOffset(0, currentCylinderItems); // Center "Select a Class"
+                drawCylinder();
                 return;
             }
 
             setApiStatus('Loading student list...', 'info');
             spinBtn.disabled = true;
+            wheelSection.style.display = 'block'; // Show section early
+            currentCylinderItems = [selectedOptionText]; // Display class name first
+            currentScrollOffset = calculateTargetScrollOffset(0, currentCylinderItems);
+            drawCylinder();
 
             try {
                 const response = await fetch(fileUrl);
                 if (!response.ok) throw new Error(`Workspaceing student list failed: ${response.statusText}`);
-                
+
                 const textContent = await response.text();
                 allStudentsInClass = textContent.split('\n').map(name => name.trim()).filter(name => name.length > 0);
                 availableStudentsToPick = [...allStudentsInClass];
 
                 if (allStudentsInClass.length === 0) {
                     setApiStatus('No students found in this class file, or file is empty/misformatted.', 'error');
-                    wheelSection.style.display = 'block';
+                    currentCylinderItems = ["No Students in Class"];
                     spinBtn.disabled = true;
-                    drawWheel([]);
                 } else {
-                    drawWheel(allStudentsInClass); // Draw wheel with ALL students
-                    wheelSection.style.display = 'block';
+                    currentCylinderItems = [...allStudentsInClass]; // Now populate with students
                     spinBtn.disabled = false;
-                    updateStudentsLeftDisplay();
-                    setApiStatus('Student list loaded. Ready to spin!', 'info');
+                    setApiStatus('Student list loaded. Ready to roll!', 'info');
                 }
+                currentScrollOffset = calculateTargetScrollOffset(0, currentCylinderItems); // Center first student or "No Students"
+                drawCylinder();
+                updateStudentsLeftDisplay();
 
             } catch (error) {
                 console.error('Error loading student list:', error);
                 setApiStatus(`Error loading students: ${error.message}`, 'error');
-                wheelSection.style.display = 'block'; 
+                currentCylinderItems = ["Error Loading List"];
+                currentScrollOffset = calculateTargetScrollOffset(0, currentCylinderItems);
+                drawCylinder();
                 spinBtn.disabled = true;
-                drawWheel([]); 
             }
         });
 
-        let isSpinning = false;
-        let currentWheelRotation = 0; 
+        function calculateTargetScrollOffset(targetIndex, itemsArray = currentCylinderItems) {
+            if (!itemsArray || itemsArray.length === 0) return 0;
+            const targetItemVirtualStripX = (targetIndex * ITEM_WIDTH) + (ITEM_WIDTH / 2);
+            return targetItemVirtualStripX - (wheelCanvas.width / 2);
+        }
 
-        function drawWheel(namesToDraw) { // Renamed parameter for clarity
+        function drawCylinder() {
             const ctx = wheelCanvas.getContext('2d');
-            const numSegments = namesToDraw.length;
-            const canvasSize = 300;
-            wheelCanvas.width = canvasSize;
-            wheelCanvas.height = canvasSize;
+            const canvasWidth = wheelCanvas.width;
+            const canvasHeight = wheelCanvas.height;
 
-            const centerX = canvasSize / 2;
-            const centerY = canvasSize / 2;
-            const radius = canvasSize / 2 - 5; 
+            ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = CYLINDER_FONT;
 
-            ctx.clearRect(0, 0, canvasSize, canvasSize);
-
-            if (numSegments === 0) {
-                ctx.beginPath();
-                ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-                ctx.fillStyle = '#f0f0f0';
-                ctx.fill();
-                ctx.strokeStyle = '#ccc';
-                ctx.stroke();
-                ctx.fillStyle = '#555';
-                ctx.font = 'bold 18px "Segoe UI", Arial';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText('No Students', centerX, centerY);
+            if (!currentCylinderItems || currentCylinderItems.length === 0) {
+                ctx.fillStyle = '#888'; // Different color for placeholder
+                ctx.fillText('No Items Loaded', canvasWidth / 2, canvasHeight / 2);
                 return;
             }
 
-            const anglePerSegment = (2 * Math.PI) / numSegments;
-            const colors = ["#4285F4", "#DB4437", "#F4B400", "#0F9D58", "#AB47BC", "#00ACC1", "#FF7043", "#7E57C2", "#5C6BC0", "#26A69A"];
-            ctx.font = 'bold 13px "Segoe UI", Arial'; 
+            const numDisplayItems = currentCylinderItems.length;
 
-            namesToDraw.forEach((name, i) => {
-                const startAngle = i * anglePerSegment;
-                const endAngle = (i + 1) * anglePerSegment;
+            // Loop through a virtual strip of items to create a seamless rolling effect
+            // Draw enough items to cover the canvas and allow for smooth looping
+            const itemsToConsider = numDisplayItems * 3; // Arbitrary multiplier for looping
+            const startIndex = Math.floor(currentScrollOffset / ITEM_WIDTH) - Math.ceil(canvasWidth / ITEM_WIDTH) - numDisplayItems;
+            const endIndex = Math.ceil((currentScrollOffset + canvasWidth) / ITEM_WIDTH) + numDisplayItems;
 
-                ctx.beginPath();
-                ctx.moveTo(centerX, centerY);
-                ctx.arc(centerX, centerY, radius, startAngle, endAngle);
-                ctx.closePath();
-                ctx.fillStyle = colors[i % colors.length];
-                ctx.fill();
-                ctx.strokeStyle = '#fff'; 
-                ctx.lineWidth = 2;
-                ctx.stroke();
 
-                ctx.save();
-                ctx.translate(centerX, centerY);
-                ctx.rotate(startAngle + anglePerSegment / 2);
-                ctx.textAlign = 'right'; 
-                ctx.textBaseline = 'middle';
-                ctx.fillStyle = '#ffffff'; 
-                
-                const displayName = name.length > 15 ? name.substring(0, 13) + '...' : name;
-                ctx.fillText(displayName, radius - 10, 0); 
-                ctx.restore();
-            });
+            for (let i = startIndex; i < endIndex; i++) {
+                const actualItemIndex = (i % numDisplayItems + numDisplayItems) % numDisplayItems; // Handles negative i correctly
+                const item = currentCylinderItems[actualItemIndex];
+
+                // Calculate the X position for the center of the item on the *virtual infinite strip*
+                const itemCenterOnStripX = i * ITEM_WIDTH + ITEM_WIDTH / 2;
+
+                // Calculate where this item's center should be drawn on the canvas
+                const drawOnCanvasX = itemCenterOnStripX - currentScrollOffset;
+
+                // Only draw if it's potentially visible
+                if (drawOnCanvasX + ITEM_WIDTH / 2 > 0 && drawOnCanvasX - ITEM_WIDTH / 2 < canvasWidth) {
+                    ctx.fillStyle = CYLINDER_TEXT_COLOR;
+                    const displayName = item.length > 18 ? item.substring(0, 16) + '...' : item; // Adjust truncation
+                    ctx.fillText(displayName, drawOnCanvasX, canvasHeight / 2);
+                }
+            }
         }
+
 
         spinBtn.addEventListener('click', () => {
             if (isSpinning || availableStudentsToPick.length === 0) return;
 
             isSpinning = true;
             spinBtn.disabled = true;
-            resultDisplay.textContent = 'Spinning...';
+            resultDisplay.textContent = 'Rolling...';
 
-            // Select a winner from the *available* students
+            // Ensure the cylinder is showing all students from the class for the spin
+            if (currentCylinderItems.length !== allStudentsInClass.length || currentCylinderItems[0] !== allStudentsInClass[0]) {
+                 //This check might be too strict if class name was an item
+                currentCylinderItems = [...allStudentsInClass];
+            }
+
+
             const winnerName = availableStudentsToPick[Math.floor(Math.random() * availableStudentsToPick.length)];
-            
-            // Find the winner's index in the *original full list* for visual targeting
             const visualIndexOfWinner = allStudentsInClass.indexOf(winnerName);
-            const numTotalSegmentsOnWheel = allStudentsInClass.length;
+            const numTotalItems = allStudentsInClass.length;
 
-            const anglePerSegmentDegrees = 360 / numTotalSegmentsOnWheel;
-            const targetSegmentMiddleAngleDegrees = (visualIndexOfWinner + 0.5) * anglePerSegmentDegrees;
-            
-            const randomExtraRotations = 3 + Math.floor(Math.random() * 3); 
-            const targetRotation = (randomExtraRotations * 360) - targetSegmentMiddleAngleDegrees + (Math.random() * anglePerSegmentDegrees * 0.4 - anglePerSegmentDegrees * 0.2);
-
-            currentWheelRotation += targetRotation; 
-            wheel.style.transform = `rotate(${currentWheelRotation}deg)`;
-
-            setTimeout(() => {
+            if (numTotalItems === 0) { // Should not happen if button is enabled
                 isSpinning = false;
-                resultDisplay.textContent = `${winnerName}`;
-                
-                const winnerIdxInAvailable = availableStudentsToPick.indexOf(winnerName);
-                if (winnerIdxInAvailable > -1) {
-                    availableStudentsToPick.splice(winnerIdxInAvailable, 1);
-                }
-                updateStudentsLeftDisplay();
+                spinBtn.disabled = true;
+                return;
+            }
 
-                if (availableStudentsToPick.length > 0) {
-                    // DO NOT redraw the wheel. It keeps showing all original names.
-                    spinBtn.disabled = false;
+            // Calculate the target X position on the virtual strip for the winner's center
+            let targetVirtualStripX = (visualIndexOfWinner * ITEM_WIDTH) + (ITEM_WIDTH / 2);
+
+            // Add several full rolls for visual effect
+            const randomExtraRolls = 3 + Math.floor(Math.random() * 4);
+            targetVirtualStripX += randomExtraRolls * numTotalItems * ITEM_WIDTH;
+
+            // Calculate the final scrollOffset needed to bring targetVirtualStripX to the center of the canvas
+            let finalScrollOffset = targetVirtualStripX - (wheelCanvas.width / 2);
+            
+            // Add a slight random variation to the stopping point within the item's width
+            finalScrollOffset += (Math.random() * ITEM_WIDTH * 0.3) - (ITEM_WIDTH * 0.15);
+
+
+            const startScrollOffset = currentScrollOffset;
+            const animationDuration = 5000; // ms
+            let startTime = null;
+
+            function animateRoll(timestamp) {
+                if (!startTime) startTime = timestamp;
+                const elapsedTime = timestamp - startTime;
+                const progress = Math.min(elapsedTime / animationDuration, 1);
+
+                // Ease-out cubic function for smooth deceleration
+                const easedProgress = 1 - Math.pow(1 - progress, 4); // Cubic is pow 3, Quartic is pow 4
+
+                currentScrollOffset = startScrollOffset + (finalScrollOffset - startScrollOffset) * easedProgress;
+                drawCylinder();
+
+                if (progress < 1) {
+                    requestAnimationFrame(animateRoll);
                 } else {
-                    // All students picked. Now clear the wheel.
-                    drawWheel([]); 
-                    studentsLeftDisplay.textContent = 'All students have been picked!';
-                    studentsLeftDisplay.style.display = 'block';
-                    spinBtn.disabled = true;
+                    currentScrollOffset = finalScrollOffset; // Ensure exact landing
+                    drawCylinder(); // Final draw at the exact position
+
+                    isSpinning = false;
+                    resultDisplay.textContent = `${winnerName}`;
+
+                    const winnerIdxInAvailable = availableStudentsToPick.indexOf(winnerName);
+                    if (winnerIdxInAvailable > -1) {
+                        availableStudentsToPick.splice(winnerIdxInAvailable, 1);
+                    }
+                    updateStudentsLeftDisplay();
+
+                    if (availableStudentsToPick.length > 0) {
+                        spinBtn.disabled = false;
+                    } else {
+                        studentsLeftDisplay.textContent = 'All students have been picked!';
+                        studentsLeftDisplay.style.display = 'block';
+                        spinBtn.disabled = true;
+                        // Optionally display a message on the cylinder
+                        setTimeout(() => { // Delay slightly so user sees the winner
+                           currentCylinderItems = [`All ${allStudentsInClass.length} picked!`];
+                           currentScrollOffset = calculateTargetScrollOffset(0, currentCylinderItems);
+                           drawCylinder();
+                        }, 1000);
+                    }
                 }
-            }, 5000); 
+            }
+            requestAnimationFrame(animateRoll);
         });
-        
+
         function updateStudentsLeftDisplay() {
-            if (availableStudentsToPick.length > 0) {
+            if (availableStudentsToPick.length > 0 && allStudentsInClass.length > 0) {
                 studentsLeftDisplay.textContent = `${availableStudentsToPick.length} student(s) remaining to be picked.`;
                 studentsLeftDisplay.style.display = 'block';
             } else if (allStudentsInClass.length > 0 && availableStudentsToPick.length === 0) {
-                 studentsLeftDisplay.textContent = 'All students have been picked!';
-                 studentsLeftDisplay.style.display = 'block';
-            }
-            else {
+                studentsLeftDisplay.textContent = 'All students have been picked!';
+                studentsLeftDisplay.style.display = 'block';
+            } else {
                 studentsLeftDisplay.style.display = 'none';
             }
         }
 
         window.onload = () => {
-            drawWheel([]); 
+            wheelCanvas.width = 300; // Match #wheel div width from CSS
+            wheelCanvas.height = 50; // Match #wheel div height from CSS
+
+            currentCylinderItems = ["Select a Class"];
+            currentScrollOffset = calculateTargetScrollOffset(0, currentCylinderItems);
+            drawCylinder();
             autoDetectRepoAndFetchClasses();
         };
     </script>
