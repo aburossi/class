@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Picker Wheel</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 600px;
+        }
+
+        h1, h2 {
+            color: #333;
+            text-align: center;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .input-group input[type="text"],
+        .input-group select {
+            width: calc(100% - 22px);
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        #wheel-container {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            margin: 20px auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #wheel {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 5px solid #333;
+            position: relative;
+            overflow: hidden;
+            transition: transform 5s cubic-bezier(0.25, 0.1, 0.25, 1); /* Ease-out spin */
+            background-color: #fff; /* Fallback if canvas doesn't draw for some reason */
+        }
+
+        #wheel canvas {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+        }
+
+        #pointer {
+            width: 0;
+            height: 0;
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-top: 30px solid red;
+            position: absolute;
+            top: -10px; /* Position above the center */
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+        }
+
+        #result {
+            margin-top: 20px;
+            font-size: 1.5em;
+            font-weight: bold;
+            text-align: center;
+            padding: 10px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+        }
+
+        .error-message {
+            color: red;
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        .info-message {
+            color: #0056b3;
+            margin-top: 10px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Student Picker Wheel</h1>
+
+        <div class="input-group">
+            <label for="githubUser">GitHub Username/Organization:</label>
+            <input type="text" id="githubUser" placeholder="e.g.,octocat">
+        </div>
+
+        <div class="input-group">
+            <label for="githubRepo">GitHub Repository Name:</label>
+            <input type="text" id="githubRepo" placeholder="e.g., Spoon-Knife">
+        </div>
+
+        <button id="fetchClassesBtn">Fetch Classes from 'klassen' Folder</button>
+        <p id="apiStatus" class="info-message"></p>
+
+
+        <div class="input-group" id="classSelectionGroup" style="display:none;">
+            <label for="classSelect">Select a Class:</label>
+            <select id="classSelect"></select>
+        </div>
+
+        <div id="wheel-section" style="display:none;">
+            <h2>Spin the Wheel!</h2>
+            <div id="wheel-container">
+                <div id="pointer"></div>
+                <div id="wheel">
+                    <canvas id="wheelCanvas"></canvas>
+                </div>
+            </div>
+            <button id="spinBtn" disabled>Spin</button>
+            <div id="result">Selected: ?</div>
+        </div>
+         <p id="studentsLeft" class="info-message"></p>
+    </div>
+
+    <script>
+        const githubUserInput = document.getElementById('githubUser');
+        const githubRepoInput = document.getElementById('githubRepo');
+        const fetchClassesBtn = document.getElementById('fetchClassesBtn');
+        const classSelect = document.getElementById('classSelect');
+        const classSelectionGroup = document.getElementById('classSelectionGroup');
+        const wheelSection = document.getElementById('wheel-section');
+        const spinBtn = document.getElementById('spinBtn');
+        const wheel = document.getElementById('wheel');
+        const wheelCanvas = document.getElementById('wheelCanvas');
+        const resultDisplay = document.getElementById('result');
+        const apiStatus = document.getElementById('apiStatus');
+        const studentsLeftDisplay = document.getElementById('studentsLeft');
+
+        let currentStudents = [];
+        let availableStudents = [];
+        let classFiles = []; // To store {name, path} of class files
+
+        const GITHUB_API_BASE = 'https://api.github.com/repos';
+        const FOLDER_PATH = 'klassen';
+
+        // --- A. Fetching Class Files ---
+        fetchClassesBtn.addEventListener('click', async () => {
+            const user = githubUserInput.value.trim();
+            const repo = githubRepoInput.value.trim();
+
+            if (!user || !repo) {
+                apiStatus.textContent = 'Please enter GitHub Username and Repository Name.';
+                apiStatus.className = 'error-message';
+                return;
+            }
+
+            apiStatus.textContent = 'Fetching classes...';
+            apiStatus.className = 'info-message';
+            fetchClassesBtn.disabled = true;
+
+            try {
+                const response = await fetch(`${GITHUB_API_BASE}/${user}/${repo}/contents/${FOLDER_PATH}`);
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        throw new Error(`Folder '${FOLDER_PATH}' not found or repository is private/incorrect.`);
+                    } else if (response.status === 403) {
+                         throw new Error('API rate limit exceeded or access forbidden. Wait a bit or check repo permissions.');
+                    }
+                    throw new Error(`Error fetching classes: ${response.statusText}`);
+                }
+                const data = await response.json();
+                
+                classFiles = data
+                    .filter(file => file.type === 'file' && file.name.endsWith('.txt'))
+                    .map(file => ({ name: file.name.replace('.txt', ''), path: file.path, download_url: file.download_url }));
+
+                if (classFiles.length === 0) {
+                    apiStatus.textContent = `No .txt files found in the '${FOLDER_PATH}' folder.`;
+                    apiStatus.className = 'error-message';
+                    classSelectionGroup.style.display = 'none';
+                    wheelSection.style.display = 'none';
+                    return;
+                }
+
+                populateClassSelector();
+                classSelectionGroup.style.display = 'block';
+                apiStatus.textContent = 'Classes loaded successfully. Please select a class.';
+                apiStatus.className = 'info-message';
+
+            } catch (error) {
+                console.error('Error fetching classes:', error);
+                apiStatus.textContent = `Error: ${error.message}`;
+                apiStatus.className = 'error-message';
+                classSelectionGroup.style.display = 'none';
+                wheelSection.style.display = 'none';
+            } finally {
+                fetchClassesBtn.disabled = false;
+            }
+        });
+
+        function populateClassSelector() {
+            classSelect.innerHTML = '<option value="">-- Select a Class --</option>';
+            classFiles.forEach(file => {
+                const option = document.createElement('option');
+                option.value = file.download_url; // Use download_url to fetch content
+                option.textContent = file.name;
+                classSelect.appendChild(option);
+            });
+            wheelSection.style.display = 'none'; // Hide wheel until class is loaded
+        }
+
+        classSelect.addEventListener('change', async (event) => {
+            const fileUrl = event.target.value;
+            if (!fileUrl) {
+                wheelSection.style.display = 'none';
+                currentStudents = [];
+                availableStudents = [];
+                spinBtn.disabled = true;
+                resultDisplay.textContent = 'Selected: ?';
+                studentsLeftDisplay.textContent = '';
+                return;
+            }
+
+            apiStatus.textContent = 'Loading student list...';
+            apiStatus.className = 'info-message';
+            spinBtn.disabled = true;
+
+            try {
+                // GitHub API's download_url might sometimes have CORS issues if not careful.
+                // For raw content, it's often better, but let's try direct fetch first.
+                const response = await fetch(fileUrl);
+                if (!response.ok) {
+                    throw new Error(`Error fetching student list: ${response.statusText}`);
+                }
+                const textContent = await response.text();
+                currentStudents = textContent.split('\n').map(name => name.trim()).filter(name => name.length > 0);
+                availableStudents = [...currentStudents];
+
+                if (availableStudents.length === 0) {
+                    resultDisplay.textContent = 'No students found in this class file.';
+                    studentsLeftDisplay.textContent = '';
+                    apiStatus.textContent = 'Class file is empty or not formatted correctly.';
+                    apiStatus.className = 'error-message';
+                    wheelSection.style.display = 'block'; // Show section but keep spin disabled
+                    spinBtn.disabled = true;
+                    drawWheel([]); // Draw an empty wheel
+                } else {
+                    drawWheel(availableStudents);
+                    wheelSection.style.display = 'block';
+                    spinBtn.disabled = false;
+                    resultDisplay.textContent = 'Selected: ?';
+                    updateStudentsLeftDisplay();
+                    apiStatus.textContent = 'Student list loaded. Ready to spin!';
+                    apiStatus.className = 'info-message';
+                }
+
+            } catch (error) {
+                console.error('Error fetching student list:', error);
+                resultDisplay.textContent = `Error: ${error.message}`;
+                studentsLeftDisplay.textContent = '';
+                apiStatus.textContent = `Error loading students: ${error.message}`;
+                apiStatus.className = 'error-message';
+                wheelSection.style.display = 'block'; // Show section to display error
+                spinBtn.disabled = true;
+            }
+        });
+
+        // --- B. Spin Wheel & Choose Name ---
+        // --- C. Remove Name from Pot ---
+
+        let isSpinning = false;
+        let currentRotation = 0;
+
+        function drawWheel(names) {
+            const ctx = wheelCanvas.getContext('2d');
+            const numSegments = names.length;
+            if (numSegments === 0) {
+                ctx.clearRect(0, 0, wheelCanvas.width, wheelCanvas.height);
+                ctx.beginPath();
+                ctx.arc(150, 150, 145, 0, 2 * Math.PI);
+                ctx.fillStyle = '#eee';
+                ctx.fill();
+                ctx.stroke();
+                ctx.fillStyle = '#333';
+                ctx.font = '16px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('No Students', 150, 150);
+                return;
+            }
+
+            const anglePerSegment = (2 * Math.PI) / numSegments;
+            const colors = ['#FFD700', '#FF6347', '#ADFF2F', '#87CEEB', '#DA70D6', '#40E0D0', '#FF8C00', '#98FB98'];
+            // Ensure canvas is scaled correctly for drawing
+            wheelCanvas.width = 300;
+            wheelCanvas.height = 300;
+            const centerX = wheelCanvas.width / 2;
+            const centerY = wheelCanvas.height / 2;
+            const radius = Math.min(centerX, centerY) - 5; // 5 for border
+
+            ctx.clearRect(0, 0, wheelCanvas.width, wheelCanvas.height);
+            ctx.font = '14px Arial';
+
+            names.forEach((name, i) => {
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(centerX, centerY, radius, i * anglePerSegment, (i + 1) * anglePerSegment);
+                ctx.closePath();
+                ctx.fillStyle = colors[i % colors.length];
+                ctx.fill();
+                ctx.stroke(); // Draw lines between segments
+
+                // Draw text
+                ctx.save();
+                ctx.translate(centerX, centerY);
+                ctx.rotate((i + 0.5) * anglePerSegment); // Rotate to center of segment
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = '#000';
+                // Adjust text position for readability
+                const text = name.length > 12 ? name.substring(0,10) + '...' : name;
+                ctx.fillText(text, radius - 10, 0);
+                ctx.restore();
+            });
+        }
+
+        spinBtn.addEventListener('click', () => {
+            if (isSpinning || availableStudents.length === 0) return;
+
+            isSpinning = true;
+            spinBtn.disabled = true;
+            resultDisplay.textContent = 'Spinning...';
+
+            const randomIndex = Math.floor(Math.random() * availableStudents.length);
+            const selectedName = availableStudents[randomIndex];
+            
+            // Calculate rotation to point to the selected segment
+            // The pointer is at the top (0 or 2*PI). Segments are drawn clockwise.
+            // We need to find the angle for the middle of the selected segment.
+            const anglePerSegment = 360 / availableStudents.length;
+            const targetSegmentMiddleAngle = (randomIndex + 0.5) * anglePerSegment;
+            
+            // The wheel spins, so we want the target segment to land under the *static* top pointer.
+            // If segment 0 is at the top, angle is 0.
+            // If we want segment `randomIndex` at the top, we need to rotate the wheel
+            // such that its starting position (0 degrees on its internal drawing) aligns
+            // with `-(targetSegmentMiddleAngle)`.
+            // Add multiple full rotations for visual effect.
+            const randomExtraRotations = 3 + Math.floor(Math.random() * 3); // 3 to 5 full spins
+            const totalRotation = (randomExtraRotations * 360) - targetSegmentMiddleAngle + (anglePerSegment / (2 + Math.random()*2)); // slight offset from exact middle
+            
+            currentRotation += totalRotation;
+
+            wheel.style.transform = `rotate(${currentRotation}deg)`;
+
+            setTimeout(() => {
+                isSpinning = false;
+                if (availableStudents.length > 0) { // Check again in case it became empty during spin animation
+                    resultDisplay.textContent = `Selected: ${selectedName}`;
+                    
+                    // Remove selected name from available students
+                    availableStudents.splice(randomIndex, 1);
+                    updateStudentsLeftDisplay();
+
+                    if (availableStudents.length > 0) {
+                        drawWheel(availableStudents); // Redraw without the selected name
+                        spinBtn.disabled = false;
+                    } else {
+                        drawWheel([]); // Draw empty wheel
+                        resultDisplay.textContent = `Selected: ${selectedName}. All students picked!`;
+                        spinBtn.disabled = true;
+                        studentsLeftDisplay.textContent = 'All students have been picked for this class!';
+                    }
+                }
+            }, 5000); // Match CSS transition duration
+        });
+        
+        function updateStudentsLeftDisplay() {
+            if (availableStudents.length > 0) {
+                studentsLeftDisplay.textContent = `${availableStudents.length} student(s) remaining in the pot.`;
+            } else {
+                studentsLeftDisplay.textContent = '';
+            }
+        }
+
+        // Initial state
+        drawWheel([]); // Draw an empty wheel initially
+    </script>
+</body>
+</html>
