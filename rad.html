@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Picker Cylinder</title>
+    <title>Student Picker</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -90,24 +90,28 @@
 
         #wheel-container { /* Renamed semantically, but reusing ID for less JS change */
             position: relative;
-            width: 320px; /* Width of the cylinder viewport */
-            height: 70px; /* Height of the cylinder viewport + some padding */
+            width: 320px; /* Width of the display area */
+            height: 80px; /* Height of the display area */
             margin: 25px auto;
             display: flex;
             align-items: center;
             justify-content: center;
-            background-color: #e8f0fe; /* Light background for contrast with pointer */
             border: 1px solid #dadce0;
             border-radius: 4px;
+            padding: 5px; /* Padding around the inner canvas container */
+            box-sizing: border-box;
         }
 
-        #wheel { /* This is the viewport for the canvas */
-            width: 300px;  /* Canvas width */
-            height: 50px; /* Canvas height */
+        #wheel { /* This is the container for the canvas */
+            width: 100%;
+            height: 100%;
             position: relative;
             overflow: hidden;
-            background-color: #f8f9fa;
-            /* No border-radius for cylinder, no CSS transform for spinning */
+            background-color: #f8f9fa; /* Background for the canvas area */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 3px;
         }
 
         #wheel canvas {
@@ -115,16 +119,8 @@
             /* width and height set in JS */
         }
 
-        #pointer { /* Vertical line pointer */
-            width: 3px;
-            height: 40px; /* Adjust to be less than canvas viewport height */
-            background-color: #d93025; /* Red pointer */
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 10;
-            border-radius: 1px;
+        #pointer {
+            display: none; /* Pointer not needed for this animation */
         }
 
         #result {
@@ -162,10 +158,11 @@
             color: #5f6368;
             margin-top: 5px;
         }
-    </style></head>
+    </style>
+</head>
 <body>
     <div class="container">
-        <h1>Student Picker Cylinder</h1>
+        <h1>Student Picker</h1>
 
         <p id="repoInfo" class="subtle-message">Attempting to load classes...</p>
         <p id="apiStatus" class="message" style="display:none;"></p>
@@ -176,15 +173,11 @@
         </div>
 
         <div id="wheel-section" style="display:none;">
-            <h2>Roll the Cylinder!</h2>
-            <div id="wheel-container">
-                <div id="pointer"></div>
-                <div id="wheel"> {/* This is now the viewport for the canvas cylinder */}
-                    <canvas id="wheelCanvas"></canvas>
+            <h2>Picking a Student...</h2> <div id="wheel-container">
+                <div id="pointer"></div> <div id="wheel"> <canvas id="wheelCanvas"></canvas>
                 </div>
             </div>
-            <button id="spinBtn" disabled>Roll</button>
-            <div id="result">?</div>
+            <button id="spinBtn" disabled>Pick Student</button> <div id="result">?</div>
         </div>
         <p id="studentsLeft" class="message info-message" style="display:none;"></p>
     </div>
@@ -194,7 +187,6 @@
         const classSelectionGroup = document.getElementById('classSelectionGroup');
         const wheelSection = document.getElementById('wheel-section');
         const spinBtn = document.getElementById('spinBtn');
-        // const wheelDiv = document.getElementById('wheel'); // We still have this div as canvas container
         const wheelCanvas = document.getElementById('wheelCanvas');
         const resultDisplay = document.getElementById('result');
         const apiStatus = document.getElementById('apiStatus');
@@ -214,14 +206,15 @@
         let availableStudentsToPick = [];
         let classFilesData = [];
 
-        let isSpinning = false; // Changed from isSpinning
-        // === Cylinder Specific Variables ===
-        let currentCylinderItems = []; // Items currently displayed on the cylinder
-        let currentScrollOffset = 0; // Horizontal scroll position of the cylinder items
-        const ITEM_WIDTH = 150; // Apparent width of each item slot on the cylinder
-        const CYLINDER_TEXT_COLOR = '#333333';
-        const CYLINDER_FONT = 'bold 18px "Segoe UI", Arial';
-        // === End Cylinder Specific Variables ===
+        let isSpinning = false;
+
+        // --- New Animation Specific Variables ---
+        const NORMAL_FONT = 'bold 24px "Segoe UI", Arial';
+        const WINNER_FONT = 'bold 38px "Segoe UI", Arial'; // Slightly larger winner font
+        const TEXT_COLOR = '#333333';
+        let currentDisplayedClassName = "Select a Class"; // To store the name of the selected class
+        // --- End New Animation Specific Variables ---
+
 
         function setApiStatus(message, type = 'info') {
             apiStatus.textContent = message;
@@ -235,6 +228,7 @@
         }
 
         async function autoDetectRepoAndFetchClasses() {
+            // ... (This function remains the same as your previous version) ...
             if (typeof MANUAL_GITHUB_USER !== 'undefined' && MANUAL_GITHUB_USER &&
                 typeof MANUAL_GITHUB_REPO !== 'undefined' && MANUAL_GITHUB_REPO) {
                 GITHUB_USER = MANUAL_GITHUB_USER;
@@ -247,14 +241,10 @@
                     const parts = hostname.split('.');
                     GITHUB_USER = parts[0];
                     const pathSegments = pathname.split('/').filter(segment => segment.length > 0 && !segment.endsWith('.html'));
-                    if (pathSegments.length > 0 && pathSegments[0].toLowerCase() !== FOLDER_PATH.toLowerCase()) {
+                     if (pathSegments.length > 0 && pathSegments[0].toLowerCase() !== FOLDER_PATH.toLowerCase()) {
                         GITHUB_REPO = pathSegments[0];
                     } else {
-                         // If repo is the root of the github.io page, or if the first path segment IS the folder_path
-                        // this logic might need adjustment based on actual GH pages deployment structure.
-                        // For a URL like user.github.io/repoName/, pathSegments[0] is 'repoName'
-                        // For user.github.io/ (where repo is user.github.io), pathSegments is empty.
-                        GITHUB_REPO = pathSegments[0] || GITHUB_USER + ".github.io"; // Fallback for root repo
+                        GITHUB_REPO = pathSegments[0] || GITHUB_USER + ".github.io";
                     }
                     setRepoInfo(`Detected: ${GITHUB_USER}/${GITHUB_REPO}.`);
                 } else if (window.location.protocol === 'file:') {
@@ -277,6 +267,7 @@
         }
 
         async function fetchClassesList() {
+            // ... (This function remains the same as your previous version) ...
             setApiStatus(`Workspaceing classes from '${FOLDER_PATH}'...`, 'info');
             classSelectionGroup.style.display = 'none';
             wheelSection.style.display = 'none';
@@ -312,41 +303,60 @@
         }
 
         function populateClassSelector() {
+            // ... (This function remains the same) ...
             classSelect.innerHTML = '<option value="">-- Select a Class --</option>';
             classFilesData.forEach(file => {
                 const option = document.createElement('option');
                 option.value = file.download_url;
-                option.textContent = file.name; // This is the class name (filename without .txt)
+                option.textContent = file.name;
                 classSelect.appendChild(option);
             });
             wheelSection.style.display = 'none';
         }
 
+
+        function drawNameOnCanvas(name, isWinner = false) {
+            const ctx = wheelCanvas.getContext('2d');
+            const canvasWidth = wheelCanvas.width;
+            const canvasHeight = wheelCanvas.height;
+
+            ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = TEXT_COLOR;
+            ctx.font = isWinner ? WINNER_FONT : NORMAL_FONT;
+
+            if (!name) {
+                name = "?"; // Default placeholder
+            }
+            // Adjust truncation based on typical name length and font size
+            const maxLength = isWinner ? 15 : 18;
+            const displayName = name.length > maxLength ? name.substring(0, maxLength - 2) + '...' : name;
+
+            ctx.fillText(displayName, canvasWidth / 2, canvasHeight / 2);
+        }
+
         classSelect.addEventListener('change', async (event) => {
             const fileUrl = event.target.value;
-            const selectedOptionText = event.target.options[event.target.selectedIndex].text;
+            currentDisplayedClassName = event.target.options[event.target.selectedIndex].text;
 
             resultDisplay.textContent = '?';
             studentsLeftDisplay.style.display = 'none';
-            // No CSS transform reset needed for wheel div
 
             if (!fileUrl) {
                 wheelSection.style.display = 'none';
                 allStudentsInClass = [];
                 availableStudentsToPick = [];
                 spinBtn.disabled = true;
-                currentCylinderItems = ["Select a Class"];
-                currentScrollOffset = calculateTargetScrollOffset(0, currentCylinderItems); // Center "Select a Class"
-                drawCylinder();
+                currentDisplayedClassName = "Select a Class";
+                drawNameOnCanvas(currentDisplayedClassName);
                 return;
             }
 
             setApiStatus('Loading student list...', 'info');
             spinBtn.disabled = true;
-            wheelSection.style.display = 'block'; // Show section early
-            currentCylinderItems = [selectedOptionText]; // Display class name first
-            currentScrollOffset = calculateTargetScrollOffset(0, currentCylinderItems);
-            drawCylinder();
+            wheelSection.style.display = 'block';
+            drawNameOnCanvas(currentDisplayedClassName); // Show class name while loading
 
             try {
                 const response = await fetch(fileUrl);
@@ -358,165 +368,87 @@
 
                 if (allStudentsInClass.length === 0) {
                     setApiStatus('No students found in this class file, or file is empty/misformatted.', 'error');
-                    currentCylinderItems = ["No Students in Class"];
+                    drawNameOnCanvas("No Students in Class");
                     spinBtn.disabled = true;
                 } else {
-                    currentCylinderItems = [...allStudentsInClass]; // Now populate with students
+                    setApiStatus('Student list loaded. Ready to pick!', 'info');
+                    drawNameOnCanvas(currentDisplayedClassName); // Show class name as default idle display
                     spinBtn.disabled = false;
-                    setApiStatus('Student list loaded. Ready to roll!', 'info');
                 }
-                currentScrollOffset = calculateTargetScrollOffset(0, currentCylinderItems); // Center first student or "No Students"
-                drawCylinder();
                 updateStudentsLeftDisplay();
 
             } catch (error) {
                 console.error('Error loading student list:', error);
                 setApiStatus(`Error loading students: ${error.message}`, 'error');
-                currentCylinderItems = ["Error Loading List"];
-                currentScrollOffset = calculateTargetScrollOffset(0, currentCylinderItems);
-                drawCylinder();
+                drawNameOnCanvas("Error Loading List");
                 spinBtn.disabled = true;
             }
         });
-
-        function calculateTargetScrollOffset(targetIndex, itemsArray = currentCylinderItems) {
-            if (!itemsArray || itemsArray.length === 0) return 0;
-            const targetItemVirtualStripX = (targetIndex * ITEM_WIDTH) + (ITEM_WIDTH / 2);
-            return targetItemVirtualStripX - (wheelCanvas.width / 2);
-        }
-
-        function drawCylinder() {
-            const ctx = wheelCanvas.getContext('2d');
-            const canvasWidth = wheelCanvas.width;
-            const canvasHeight = wheelCanvas.height;
-
-            ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.font = CYLINDER_FONT;
-
-            if (!currentCylinderItems || currentCylinderItems.length === 0) {
-                ctx.fillStyle = '#888'; // Different color for placeholder
-                ctx.fillText('No Items Loaded', canvasWidth / 2, canvasHeight / 2);
-                return;
-            }
-
-            const numDisplayItems = currentCylinderItems.length;
-
-            // Loop through a virtual strip of items to create a seamless rolling effect
-            // Draw enough items to cover the canvas and allow for smooth looping
-            const itemsToConsider = numDisplayItems * 3; // Arbitrary multiplier for looping
-            const startIndex = Math.floor(currentScrollOffset / ITEM_WIDTH) - Math.ceil(canvasWidth / ITEM_WIDTH) - numDisplayItems;
-            const endIndex = Math.ceil((currentScrollOffset + canvasWidth) / ITEM_WIDTH) + numDisplayItems;
-
-
-            for (let i = startIndex; i < endIndex; i++) {
-                const actualItemIndex = (i % numDisplayItems + numDisplayItems) % numDisplayItems; // Handles negative i correctly
-                const item = currentCylinderItems[actualItemIndex];
-
-                // Calculate the X position for the center of the item on the *virtual infinite strip*
-                const itemCenterOnStripX = i * ITEM_WIDTH + ITEM_WIDTH / 2;
-
-                // Calculate where this item's center should be drawn on the canvas
-                const drawOnCanvasX = itemCenterOnStripX - currentScrollOffset;
-
-                // Only draw if it's potentially visible
-                if (drawOnCanvasX + ITEM_WIDTH / 2 > 0 && drawOnCanvasX - ITEM_WIDTH / 2 < canvasWidth) {
-                    ctx.fillStyle = CYLINDER_TEXT_COLOR;
-                    const displayName = item.length > 18 ? item.substring(0, 16) + '...' : item; // Adjust truncation
-                    ctx.fillText(displayName, drawOnCanvasX, canvasHeight / 2);
-                }
-            }
-        }
-
 
         spinBtn.addEventListener('click', () => {
             if (isSpinning || availableStudentsToPick.length === 0) return;
 
             isSpinning = true;
             spinBtn.disabled = true;
-            resultDisplay.textContent = 'Rolling...';
-
-            // Ensure the cylinder is showing all students from the class for the spin
-            if (currentCylinderItems.length !== allStudentsInClass.length || currentCylinderItems[0] !== allStudentsInClass[0]) {
-                 //This check might be too strict if class name was an item
-                currentCylinderItems = [...allStudentsInClass];
-            }
-
+            resultDisplay.textContent = 'Picking...';
 
             const winnerName = availableStudentsToPick[Math.floor(Math.random() * availableStudentsToPick.length)];
-            const visualIndexOfWinner = allStudentsInClass.indexOf(winnerName);
-            const numTotalItems = allStudentsInClass.length;
 
-            if (numTotalItems === 0) { // Should not happen if button is enabled
-                isSpinning = false;
-                spinBtn.disabled = true;
-                return;
-            }
+            const animationTotalDuration = 3000; // 3 seconds total for cycling names
+            const nameChangeInterval = 100;   // Change name every 100ms
+            let elapsedTime = 0;
+            let animationIntervalId;
 
-            // Calculate the target X position on the virtual strip for the winner's center
-            let targetVirtualStripX = (visualIndexOfWinner * ITEM_WIDTH) + (ITEM_WIDTH / 2);
-
-            // Add several full rolls for visual effect
-            const randomExtraRolls = 3 + Math.floor(Math.random() * 4);
-            targetVirtualStripX += randomExtraRolls * numTotalItems * ITEM_WIDTH;
-
-            // Calculate the final scrollOffset needed to bring targetVirtualStripX to the center of the canvas
-            let finalScrollOffset = targetVirtualStripX - (wheelCanvas.width / 2);
-            
-            // Add a slight random variation to the stopping point within the item's width
-            finalScrollOffset += (Math.random() * ITEM_WIDTH * 0.3) - (ITEM_WIDTH * 0.15);
-
-
-            const startScrollOffset = currentScrollOffset;
-            const animationDuration = 5000; // ms
-            let startTime = null;
-
-            function animateRoll(timestamp) {
-                if (!startTime) startTime = timestamp;
-                const elapsedTime = timestamp - startTime;
-                const progress = Math.min(elapsedTime / animationDuration, 1);
-
-                // Ease-out cubic function for smooth deceleration
-                const easedProgress = 1 - Math.pow(1 - progress, 4); // Cubic is pow 3, Quartic is pow 4
-
-                currentScrollOffset = startScrollOffset + (finalScrollOffset - startScrollOffset) * easedProgress;
-                drawCylinder();
-
-                if (progress < 1) {
-                    requestAnimationFrame(animateRoll);
+            function cycleNamesEffect() {
+                elapsedTime += nameChangeInterval;
+                if (elapsedTime < animationTotalDuration) {
+                    // Display a random student name from the full class list for visual effect
+                    const randomIndex = Math.floor(Math.random() * allStudentsInClass.length);
+                    const tempNameToShow = allStudentsInClass[randomIndex];
+                    drawNameOnCanvas(tempNameToShow, false);
                 } else {
-                    currentScrollOffset = finalScrollOffset; // Ensure exact landing
-                    drawCylinder(); // Final draw at the exact position
-
-                    isSpinning = false;
-                    resultDisplay.textContent = `${winnerName}`;
-
-                    const winnerIdxInAvailable = availableStudentsToPick.indexOf(winnerName);
-                    if (winnerIdxInAvailable > -1) {
-                        availableStudentsToPick.splice(winnerIdxInAvailable, 1);
-                    }
-                    updateStudentsLeftDisplay();
-
-                    if (availableStudentsToPick.length > 0) {
-                        spinBtn.disabled = false;
-                    } else {
-                        studentsLeftDisplay.textContent = 'All students have been picked!';
-                        studentsLeftDisplay.style.display = 'block';
-                        spinBtn.disabled = true;
-                        // Optionally display a message on the cylinder
-                        setTimeout(() => { // Delay slightly so user sees the winner
-                           currentCylinderItems = [`All ${allStudentsInClass.length} picked!`];
-                           currentScrollOffset = calculateTargetScrollOffset(0, currentCylinderItems);
-                           drawCylinder();
-                        }, 1000);
-                    }
+                    clearInterval(animationIntervalId);
+                    finalizePick();
                 }
             }
-            requestAnimationFrame(animateRoll);
+
+            function finalizePick() {
+                drawNameOnCanvas(winnerName, true); // Display winner, larger
+
+                isSpinning = false;
+                resultDisplay.textContent = `${winnerName}`;
+
+                const winnerIdxInAvailable = availableStudentsToPick.indexOf(winnerName);
+                if (winnerIdxInAvailable > -1) {
+                    availableStudentsToPick.splice(winnerIdxInAvailable, 1);
+                }
+                updateStudentsLeftDisplay();
+
+                if (availableStudentsToPick.length > 0) {
+                    spinBtn.disabled = false;
+                } else {
+                    studentsLeftDisplay.textContent = 'All students have been picked!';
+                    studentsLeftDisplay.style.display = 'block';
+                    spinBtn.disabled = true;
+                    setTimeout(() => { // After showing winner, update canvas
+                        if (allStudentsInClass.length > 0) {
+                             drawNameOnCanvas(`All ${allStudentsInClass.length} picked!`, false);
+                        } else {
+                             drawNameOnCanvas("All picked!", false);
+                        }
+                    }, 2500); // Wait a bit before showing "All picked" on canvas
+                }
+            }
+
+            if (allStudentsInClass.length > 0) { // Ensure there are names to cycle through
+                animationIntervalId = setInterval(cycleNamesEffect, nameChangeInterval);
+            } else { // Should ideally not happen if button is enabled
+                finalizePick(); // Directly show winner (or placeholder if list was empty)
+            }
         });
 
         function updateStudentsLeftDisplay() {
+            // ... (This function remains the same) ...
             if (availableStudentsToPick.length > 0 && allStudentsInClass.length > 0) {
                 studentsLeftDisplay.textContent = `${availableStudentsToPick.length} student(s) remaining to be picked.`;
                 studentsLeftDisplay.style.display = 'block';
@@ -529,12 +461,13 @@
         }
 
         window.onload = () => {
-            wheelCanvas.width = 300; // Match #wheel div width from CSS
-            wheelCanvas.height = 50; // Match #wheel div height from CSS
+            // Set fixed canvas dimensions based on CSS for #wheel
+            const wheelElement = document.getElementById('wheel');
+            wheelCanvas.width = wheelElement.clientWidth > 0 ? wheelElement.clientWidth : 300;
+            wheelCanvas.height = wheelElement.clientHeight > 0 ? wheelElement.clientHeight : 50;
 
-            currentCylinderItems = ["Select a Class"];
-            currentScrollOffset = calculateTargetScrollOffset(0, currentCylinderItems);
-            drawCylinder();
+            currentDisplayedClassName = "Select a Class";
+            drawNameOnCanvas(currentDisplayedClassName);
             autoDetectRepoAndFetchClasses();
         };
     </script>
