@@ -30,38 +30,58 @@
             color: #1a73e8; /* Google Blue */
             margin-bottom: 25px;
         }
-        h2 {
+        h2 { /* General h2, can be used for "Select a Class" title */
             color: #333;
             margin-top: 30px;
             margin-bottom: 15px;
+            font-size: 1.4em;
         }
 
+        /* Input group styling (no longer used for select, but kept if other inputs are added) */
         .input-group {
             margin-bottom: 20px;
             text-align: left;
         }
 
-        .input-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #5f6368;
+        /* Styles for the new class boxes */
+        #classBoxesContainer {
+            display: flex;
+            flex-wrap: wrap; /* Allow boxes to wrap to the next line */
+            gap: 12px; /* Spacing between boxes */
+            justify-content: center; /* Center boxes if they don't fill the row */
+            margin-bottom: 25px;
+            padding-top: 10px;
         }
 
-        .input-group select {
-            width: 100%;
-            padding: 12px;
+        .class-box {
+            padding: 12px 18px;
             border: 1px solid #dadce0;
-            border-radius: 6px;
-            box-sizing: border-box;
-            font-size: 16px;
-            background-color: #fff;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+            color: #3c4043;
+            font-size: 0.95em;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+            text-align: center;
+            min-width: 100px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
         }
-        .input-group select:focus {
+
+        .class-box:hover {
+            background-color: #e8f0fe;
             border-color: #1a73e8;
-            box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
-            outline: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
         }
+
+        .class-box.selected {
+            background-color: #1a73e8;
+            color: white;
+            border-color: #1765c7;
+            box-shadow: 0 3px 6px rgba(26,115,232,0.25);
+            font-weight: 600;
+        }
+
 
         button {
             background-color: #1a73e8;
@@ -88,26 +108,26 @@
             box-shadow: none;
         }
 
-        #wheel-container { /* Renamed semantically, but reusing ID for less JS change */
+        #wheel-container {
             position: relative;
-            width: 320px; /* Width of the display area */
-            height: 80px; /* Height of the display area */
+            width: 320px;
+            height: 80px;
             margin: 25px auto;
             display: flex;
             align-items: center;
             justify-content: center;
             border: 1px solid #dadce0;
             border-radius: 4px;
-            padding: 5px; /* Padding around the inner canvas container */
+            padding: 5px;
             box-sizing: border-box;
         }
 
-        #wheel { /* This is the container for the canvas */
+        #wheel {
             width: 100%;
             height: 100%;
             position: relative;
             overflow: hidden;
-            background-color: #f8f9fa; /* Background for the canvas area */
+            background-color: #f8f9fa;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -116,11 +136,10 @@
 
         #wheel canvas {
             display: block;
-            /* width and height set in JS */
         }
 
         #pointer {
-            display: none; /* Pointer not needed for this animation */
+            display: none;
         }
 
         #result {
@@ -167,25 +186,33 @@
         <p id="repoInfo" class="subtle-message">Attempting to load classes...</p>
         <p id="apiStatus" class="message" style="display:none;"></p>
 
-        <div class="input-group" id="classSelectionGroup" style="display:none;">
-            <label for="classSelect">Select a Class:</label>
-            <select id="classSelect"></select>
+        <div id="classSelectionArea" style="display:none;">
+             <h2>Select a Class:</h2>
+            <div id="classBoxesContainer">
+                </div>
         </div>
 
+
         <div id="wheel-section" style="display:none;">
-            <h2>Picking a Student...</h2> <div id="wheel-container">
-                <div id="pointer"></div> <div id="wheel"> <canvas id="wheelCanvas"></canvas>
+            <h2 id="wheelSectionTitle">Picking a Student...</h2>
+            <div id="wheel-container">
+                <div id="pointer"></div>
+                <div id="wheel">
+                    <canvas id="wheelCanvas"></canvas>
                 </div>
             </div>
-            <button id="spinBtn" disabled>Pick Student</button> <div id="result">?</div>
+            <button id="spinBtn" disabled>Pick Student</button>
+            <div id="result">?</div>
         </div>
         <p id="studentsLeft" class="message info-message" style="display:none;"></p>
     </div>
 
     <script>
-        const classSelect = document.getElementById('classSelect');
-        const classSelectionGroup = document.getElementById('classSelectionGroup');
+        // const classSelect = document.getElementById('classSelect'); // No longer used
+        const classSelectionArea = document.getElementById('classSelectionArea'); // New container
+        const classBoxesContainer = document.getElementById('classBoxesContainer'); // New specific container for boxes
         const wheelSection = document.getElementById('wheel-section');
+        const wheelSectionTitle = document.getElementById('wheelSectionTitle');
         const spinBtn = document.getElementById('spinBtn');
         const wheelCanvas = document.getElementById('wheelCanvas');
         const resultDisplay = document.getElementById('result');
@@ -205,15 +232,14 @@
         let allStudentsInClass = [];
         let availableStudentsToPick = [];
         let classFilesData = [];
+        let selectedClassBox = null; // To keep track of the currently selected box
 
         let isSpinning = false;
 
-        // --- New Animation Specific Variables ---
         const NORMAL_FONT = 'bold 24px "Segoe UI", Arial';
-        const WINNER_FONT = 'bold 38px "Segoe UI", Arial'; // Slightly larger winner font
+        const WINNER_FONT = 'bold 38px "Segoe UI", Arial';
         const TEXT_COLOR = '#333333';
-        let currentDisplayedClassName = "Select a Class"; // To store the name of the selected class
-        // --- End New Animation Specific Variables ---
+        let currentDisplayedClassName = "Select a Class";
 
 
         function setApiStatus(message, type = 'info') {
@@ -228,7 +254,6 @@
         }
 
         async function autoDetectRepoAndFetchClasses() {
-            // ... (This function remains the same as your previous version) ...
             if (typeof MANUAL_GITHUB_USER !== 'undefined' && MANUAL_GITHUB_USER &&
                 typeof MANUAL_GITHUB_REPO !== 'undefined' && MANUAL_GITHUB_REPO) {
                 GITHUB_USER = MANUAL_GITHUB_USER;
@@ -267,9 +292,8 @@
         }
 
         async function fetchClassesList() {
-            // ... (This function remains the same as your previous version) ...
             setApiStatus(`Workspaceing classes from '${FOLDER_PATH}'...`, 'info');
-            classSelectionGroup.style.display = 'none';
+            classSelectionArea.style.display = 'none';
             wheelSection.style.display = 'none';
 
             try {
@@ -288,11 +312,13 @@
 
                 if (classFilesData.length === 0) {
                     setApiStatus(`No .txt files found in '${FOLDER_PATH}' of ${GITHUB_USER}/${GITHUB_REPO}.`, 'error');
+                    classSelectionArea.style.display = 'block'; // Show area to display the message
+                    classBoxesContainer.innerHTML = '<p>No .txt class files found in the repository.</p>';
                     return;
                 }
 
-                populateClassSelector();
-                classSelectionGroup.style.display = 'block';
+                populateClassBoxes(); // Changed from populateClassSelector
+                classSelectionArea.style.display = 'block'; // Show the area with the boxes
                 setApiStatus('Classes list loaded. Please select a class.', 'info');
                 repoInfoDisplay.style.display = 'none';
 
@@ -302,61 +328,52 @@
             }
         }
 
-        function populateClassSelector() {
-            // ... (This function remains the same) ...
-            classSelect.innerHTML = '<option value="">-- Select a Class --</option>';
-            classFilesData.forEach(file => {
-                const option = document.createElement('option');
-                option.value = file.download_url;
-                option.textContent = file.name;
-                classSelect.appendChild(option);
-            });
-            wheelSection.style.display = 'none';
-        }
+        function populateClassBoxes() {
+            classBoxesContainer.innerHTML = ''; // Clear previous boxes
+            selectedClassBox = null; // Reset selected box
 
-
-        function drawNameOnCanvas(name, isWinner = false) {
-            const ctx = wheelCanvas.getContext('2d');
-            const canvasWidth = wheelCanvas.width;
-            const canvasHeight = wheelCanvas.height;
-
-            ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillStyle = TEXT_COLOR;
-            ctx.font = isWinner ? WINNER_FONT : NORMAL_FONT;
-
-            if (!name) {
-                name = "?"; // Default placeholder
-            }
-            // Adjust truncation based on typical name length and font size
-            const maxLength = isWinner ? 15 : 18;
-            const displayName = name.length > maxLength ? name.substring(0, maxLength - 2) + '...' : name;
-
-            ctx.fillText(displayName, canvasWidth / 2, canvasHeight / 2);
-        }
-
-        classSelect.addEventListener('change', async (event) => {
-            const fileUrl = event.target.value;
-            currentDisplayedClassName = event.target.options[event.target.selectedIndex].text;
-
-            resultDisplay.textContent = '?';
-            studentsLeftDisplay.style.display = 'none';
-
-            if (!fileUrl) {
-                wheelSection.style.display = 'none';
-                allStudentsInClass = [];
-                availableStudentsToPick = [];
-                spinBtn.disabled = true;
-                currentDisplayedClassName = "Select a Class";
-                drawNameOnCanvas(currentDisplayedClassName);
+            if (classFilesData.length === 0) { // Should be caught by fetchClassesList, but good failsafe
+                classBoxesContainer.innerHTML = '<p>No classes available to display.</p>';
                 return;
             }
+
+            classFilesData.forEach(file => {
+                const box = document.createElement('div');
+                box.classList.add('class-box');
+                box.textContent = file.name;
+                box.dataset.downloadUrl = file.download_url;
+                box.dataset.className = file.name; // Store the name for easy access
+
+                box.addEventListener('click', () => {
+                    if (isSpinning) return; // Don't allow class change during spin
+
+                    if (selectedClassBox) {
+                        selectedClassBox.classList.remove('selected');
+                    }
+                    box.classList.add('selected');
+                    selectedClassBox = box;
+
+                    const fileUrl = box.dataset.downloadUrl;
+                    const classNameToDisplay = box.dataset.className;
+                    loadClass(fileUrl, classNameToDisplay);
+                });
+                classBoxesContainer.appendChild(box);
+            });
+            wheelSection.style.display = 'none'; // Keep wheel hidden until class is fully loaded
+        }
+
+        async function loadClass(fileUrl, classNameToDisplay) {
+            currentDisplayedClassName = classNameToDisplay;
+            wheelSectionTitle.textContent = `Class: ${currentDisplayedClassName}`; // Update title
+            resultDisplay.textContent = '?';
+            studentsLeftDisplay.style.display = 'none';
+            allStudentsInClass = []; // Reset student lists for the new class
+            availableStudentsToPick = [];
 
             setApiStatus('Loading student list...', 'info');
             spinBtn.disabled = true;
             wheelSection.style.display = 'block';
-            drawNameOnCanvas(currentDisplayedClassName); // Show class name while loading
+            drawNameOnCanvas("Loading students..."); // Show loading on canvas
 
             try {
                 const response = await fetch(fileUrl);
@@ -372,7 +389,8 @@
                     spinBtn.disabled = true;
                 } else {
                     setApiStatus('Student list loaded. Ready to pick!', 'info');
-                    drawNameOnCanvas(currentDisplayedClassName); // Show class name as default idle display
+                    // Display class name or first student, or a prompt like "Ready!"
+                    drawNameOnCanvas("Ready to Pick!");
                     spinBtn.disabled = false;
                 }
                 updateStudentsLeftDisplay();
@@ -382,8 +400,33 @@
                 setApiStatus(`Error loading students: ${error.message}`, 'error');
                 drawNameOnCanvas("Error Loading List");
                 spinBtn.disabled = true;
+                allStudentsInClass = [];
+                availableStudentsToPick = [];
             }
-        });
+        }
+
+
+        function drawNameOnCanvas(name, isWinner = false) {
+            const ctx = wheelCanvas.getContext('2d');
+            const canvasWidth = wheelCanvas.width;
+            const canvasHeight = wheelCanvas.height;
+
+            ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = TEXT_COLOR;
+            ctx.font = isWinner ? WINNER_FONT : NORMAL_FONT;
+
+            if (!name) {
+                name = "?";
+            }
+            const maxLength = isWinner ? 15 : 18;
+            const displayName = name.length > maxLength ? name.substring(0, maxLength - 2) + '...' : name;
+
+            ctx.fillText(displayName, canvasWidth / 2, canvasHeight / 2);
+        }
+
+        // classSelect.addEventListener removed
 
         spinBtn.addEventListener('click', () => {
             if (isSpinning || availableStudentsToPick.length === 0) return;
@@ -394,15 +437,14 @@
 
             const winnerName = availableStudentsToPick[Math.floor(Math.random() * availableStudentsToPick.length)];
 
-            const animationTotalDuration = 3000; // 3 seconds total for cycling names
-            const nameChangeInterval = 100;   // Change name every 100ms
+            const animationTotalDuration = 3000;
+            const nameChangeInterval = 100;
             let elapsedTime = 0;
             let animationIntervalId;
 
             function cycleNamesEffect() {
                 elapsedTime += nameChangeInterval;
                 if (elapsedTime < animationTotalDuration) {
-                    // Display a random student name from the full class list for visual effect
                     const randomIndex = Math.floor(Math.random() * allStudentsInClass.length);
                     const tempNameToShow = allStudentsInClass[randomIndex];
                     drawNameOnCanvas(tempNameToShow, false);
@@ -413,7 +455,7 @@
             }
 
             function finalizePick() {
-                drawNameOnCanvas(winnerName, true); // Display winner, larger
+                drawNameOnCanvas(winnerName, true);
 
                 isSpinning = false;
                 resultDisplay.textContent = `${winnerName}`;
@@ -430,25 +472,24 @@
                     studentsLeftDisplay.textContent = 'All students have been picked!';
                     studentsLeftDisplay.style.display = 'block';
                     spinBtn.disabled = true;
-                    setTimeout(() => { // After showing winner, update canvas
+                    setTimeout(() => {
                         if (allStudentsInClass.length > 0) {
                              drawNameOnCanvas(`All ${allStudentsInClass.length} picked!`, false);
                         } else {
-                             drawNameOnCanvas("All picked!", false);
+                             drawNameOnCanvas("All picked!", false); // Fallback if allStudentsInClass was empty
                         }
-                    }, 2500); // Wait a bit before showing "All picked" on canvas
+                    }, 2500);
                 }
             }
 
-            if (allStudentsInClass.length > 0) { // Ensure there are names to cycle through
+            if (allStudentsInClass.length > 0) {
                 animationIntervalId = setInterval(cycleNamesEffect, nameChangeInterval);
-            } else { // Should ideally not happen if button is enabled
-                finalizePick(); // Directly show winner (or placeholder if list was empty)
+            } else {
+                finalizePick();
             }
         });
 
         function updateStudentsLeftDisplay() {
-            // ... (This function remains the same) ...
             if (availableStudentsToPick.length > 0 && allStudentsInClass.length > 0) {
                 studentsLeftDisplay.textContent = `${availableStudentsToPick.length} student(s) remaining to be picked.`;
                 studentsLeftDisplay.style.display = 'block';
@@ -461,13 +502,12 @@
         }
 
         window.onload = () => {
-            // Set fixed canvas dimensions based on CSS for #wheel
             const wheelElement = document.getElementById('wheel');
             wheelCanvas.width = wheelElement.clientWidth > 0 ? wheelElement.clientWidth : 300;
             wheelCanvas.height = wheelElement.clientHeight > 0 ? wheelElement.clientHeight : 50;
 
             currentDisplayedClassName = "Select a Class";
-            drawNameOnCanvas(currentDisplayedClassName);
+            drawNameOnCanvas(currentDisplayedClassName); // Initial display on canvas
             autoDetectRepoAndFetchClasses();
         };
     </script>
